@@ -709,10 +709,24 @@ async function handleExtractedContent(data) {
   const title = data.title || 'Untitled';
 
   try {
+    // Check usage limit before generating
+    const config = await claudeAPI.getConfig();
+    const canGen = await usageTracker.canGenerate(!!config.apiKey);
+    
+    if (!canGen.allowed) {
+      showNotification(canGen.reason, 'warning');
+      return;
+    }
+
     showNotification('Generating study materials...');
     
     // Generate study materials (now async with Claude API)
     const materials = await aiGenerator.generateStudyMaterials(content, title);
+
+    // Track usage (only for proxy usage, not BYOK)
+    if (!config.apiKey) {
+      await usageTracker.incrementUsage();
+    }
 
     // Save to storage
     const set = await storage.saveStudySet({
@@ -732,7 +746,16 @@ async function handleExtractedContent(data) {
     displaySummary();
     switchTab('summary');
 
-    showNotification('Study set created!');
+    // Show usage info after generation
+    if (!config.apiKey) {
+      const usage = await usageTracker.getUsage();
+      const message = usage.remaining > 0 
+        ? `Study set created! ${usage.remaining} generations remaining this month.`
+        : 'Study set created! You\'ve reached your free tier limit.';
+      showNotification(message);
+    } else {
+      showNotification('Study set created!');
+    }
   } catch (error) {
     console.error('Failed to generate study materials:', error);
     showNotification('Failed to generate study materials: ' + error.message, 'error');

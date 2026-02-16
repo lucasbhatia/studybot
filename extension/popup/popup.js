@@ -302,14 +302,31 @@ function showApiKeyStatus(message, type) {
  * Update usage meter for proxy
  */
 async function updateUsageMeter() {
-  const stats = await storage.getStats();
-  const usage = stats.generationsThisMonth || 0;
-  const limit = 5; // Free tier limit
-  
-  const percentage = Math.min((usage / limit) * 100, 100);
-  document.getElementById('usageBar').style.width = percentage + '%';
-  document.getElementById('usageText').textContent = usage + '/' + limit;
-  usageSection.style.display = 'block';
+  try {
+    const usage = await usageTracker.getUsage();
+    
+    const percentage = Math.min(usage.percentage, 100);
+    const usageBar = document.getElementById('usageBar');
+    const usageText = document.getElementById('usageText');
+    
+    if (usageBar && usageText) {
+      usageBar.style.width = percentage + '%';
+      usageText.textContent = `${usage.count}/${usage.limit}`;
+      
+      // Change color based on usage
+      if (usage.percentage >= 80) {
+        usageBar.style.background = '#ff9800'; // Orange when near limit
+      } else if (usage.percentage >= 100) {
+        usageBar.style.background = '#f44336'; // Red at limit
+      } else {
+        usageBar.style.background = 'var(--accent)'; // Normal
+      }
+    }
+    
+    usageSection.style.display = 'block';
+  } catch (error) {
+    console.error('Failed to update usage meter:', error);
+  }
 }
 
 /**
