@@ -455,13 +455,47 @@ function startQuiz() {
   // Generate quiz from flashcards
   const difficulty = document.querySelector('input[name="difficulty"]:checked').value;
 
-  quizQuestions = currentStudySet.flashcards.map(card => ({
-    id: card.id,
-    question: card.question,
-    type: Math.random() > 0.7 ? 'true-false' : 'multiple-choice',
-    difficulty: difficulty,
-    correct: Math.random() > 0.5 ? 'A' : 'B',
-  }));
+  quizQuestions = currentStudySet.flashcards.map(card => {
+    // Use True/False for ~30% of questions, MC for rest
+    const isTrueFalse = Math.random() > 0.7;
+    
+    if (isTrueFalse) {
+      // For true/false, use the flashcard answer as one option
+      const isCorrectTrue = Math.random() > 0.5;
+      return {
+        id: card.id,
+        question: card.question,
+        type: 'true-false',
+        difficulty: difficulty,
+        correctAnswerIndex: isCorrectTrue ? 0 : 1, // Index in [True, False]
+        correctAnswerText: isCorrectTrue ? 'True' : 'False',
+      };
+    } else {
+      // For multiple choice, card answer is the correct choice
+      const options = [card.answer]; // Start with correct answer
+      
+      // Shuffle position of correct answer
+      const correctIndex = Math.floor(Math.random() * 4);
+      while (options.length < 4) {
+        options.push(`Distractor ${options.length}`);
+      }
+      
+      // Move correct answer to random position
+      const temp = options[0];
+      options[0] = options[correctIndex];
+      options[correctIndex] = temp;
+      
+      return {
+        id: card.id,
+        question: card.question,
+        type: 'multiple-choice',
+        difficulty: difficulty,
+        correctAnswerIndex: correctIndex, // Index of card.answer in options array
+        correctAnswerText: card.answer,
+        options: options,
+      };
+    }
+  });
 
   quizQuestions = quizQuestions.slice(0, 10);
   quizCurrentIndex = 0;
@@ -493,7 +527,7 @@ function displayQuestion() {
   // Generate options
   const options = q.type === 'true-false'
     ? ['True', 'False']
-    : ['Option A', 'Option B', 'Option C', 'Option D'];
+    : q.options;
 
   optionsContainer.innerHTML = options.map((opt, idx) => `
     <div class="option" data-index="${idx}">
@@ -513,25 +547,38 @@ function displayQuestion() {
  * Select quiz option
  */
 function selectOption(element) {
-  const index = element.dataset.index;
+  const selectedIndex = parseInt(element.dataset.index);
   const q = quizQuestions[quizCurrentIndex];
 
-  // Simulate correct answer
-  const isCorrect = Math.random() > 0.5;
+  // Check if selected answer is correct
+  const isCorrect = selectedIndex === q.correctAnswerIndex;
 
   quizAnswers.push({
     questionIndex: quizCurrentIndex,
-    selected: index,
-    correct: isCorrect,
+    selectedIndex: selectedIndex,
+    selectedText: element.textContent.trim(),
+    correctIndex: q.correctAnswerIndex,
+    correctText: q.correctAnswerText,
+    isCorrect: isCorrect,
   });
 
   // Show feedback
-  document.querySelectorAll('.option').forEach(opt => {
-    opt.classList.remove('selected');
+  document.querySelectorAll('.option').forEach((opt, idx) => {
+    opt.classList.remove('selected', 'correct', 'incorrect');
+    
+    // Show which option is correct
+    if (idx === q.correctAnswerIndex) {
+      opt.classList.add('correct');
+    }
+    // Show if selected option is wrong
+    if (idx === selectedIndex && !isCorrect) {
+      opt.classList.add('incorrect');
+    }
+    // Highlight selected option
+    if (idx === selectedIndex) {
+      opt.classList.add('selected');
+    }
   });
-
-  element.classList.add('selected');
-  element.classList.add(isCorrect ? 'correct' : 'incorrect');
 
   nextQuestionBtn.disabled = false;
 }
@@ -551,19 +598,25 @@ function displayQuizResults() {
   quizQuestion.classList.remove('active');
   quizResults.classList.add('active');
 
-  const correct = quizAnswers.filter(a => a.correct).length;
+  const correct = quizAnswers.filter(a => a.isCorrect).length;
   const total = quizQuestions.length;
+  const percentage = Math.round((correct / total) * 100);
 
-  scoreValue.textContent = `${correct}/${total}`;
+  scoreValue.textContent = `${correct}/${total} (${percentage}%)`;
 
-  resultsList.innerHTML = quizAnswers.map((answer, idx) => `
-    <div class="result-item ${answer.correct ? 'correct' : 'incorrect'}">
-      <strong>Q${idx + 1}:</strong> ${escapeHtml(quizQuestions[idx].question)}
-      <div style="margin-top: 4px; font-size: 12px;">
-        ${answer.correct ? '✓ Correct' : '✗ Incorrect'}
+  resultsList.innerHTML = quizAnswers.map((answer, idx) => {
+    const q = quizQuestions[idx];
+    return `
+    <div class="result-item ${answer.isCorrect ? 'correct' : 'incorrect'}">
+      <strong>Q${idx + 1}:</strong> ${escapeHtml(q.question)}
+      <div style="margin-top: 6px; font-size: 12px; line-height: 1.4;">
+        <div><strong>Your answer:</strong> ${escapeHtml(answer.selectedText)}</div>
+        <div><strong>Correct answer:</strong> ${escapeHtml(answer.correctText)}</div>
+        <div style="margin-top: 4px;">${answer.isCorrect ? '✓ Correct' : '✗ Incorrect'}</div>
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 /**
