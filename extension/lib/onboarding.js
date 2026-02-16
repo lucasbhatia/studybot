@@ -182,7 +182,7 @@ class OnboardingManager {
     title.textContent = step.title;
 
     // Subtitle (if exists)
-    let subtitle = '';
+    let subtitle = null;
     if (step.subtitle) {
       const subtitleEl = document.createElement('p');
       subtitleEl.style.cssText = `
@@ -191,7 +191,7 @@ class OnboardingManager {
         color: #6b7280;
       `;
       subtitleEl.textContent = step.subtitle;
-      subtitle = subtitleEl.outerHTML;
+      subtitle = subtitleEl;
     }
 
     // Content
