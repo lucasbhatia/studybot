@@ -77,17 +77,16 @@ class ContentExtractor {
         this.floatingButton.style.pointerEvents = 'auto';
 
         if (chrome.runtime.lastError) {
-          console.error('Message error:', chrome.runtime.lastError);
-          this.showNotification('Failed to extract content', 'error');
+          // Side panel may not be open yet — that's okay, open it and it will re-extract
+          this.showNotification('Opening study panel...', 'info');
+          chrome.runtime.sendMessage({ action: 'openSidePanel' });
           return;
         }
 
-        if (response && response.success) {
-          this.showNotification('Content extracted! Opening study panel...', 'success');
-          // Open side panel
-          chrome.runtime.sendMessage({ action: 'openSidePanel' });
+        if (response && response.received) {
+          this.showNotification('Content extracted! Generating study materials...', 'success');
         } else {
-          this.showNotification('Failed to process content', 'error');
+          this.showNotification('Content captured — open the side panel to generate', 'info');
         }
       });
     } catch (error) {
