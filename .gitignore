@@ -1,0 +1,51 @@
+# Dependencies
+node_modules/
+npm-debug.log
+yarn.lock
+package-lock.json
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# API keys and secrets
+.anthropic-api-key
+api_keys.json
+credentials.json
+canvas_token.txt
+
+# Build files
+dist/
+build/
+*.zip
+*.pem
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage/
+.nyc_output/
+
+# Backup files
+*.backup
+*.bak
+
+# Local development
+dev/
+temp/
+tmp/
+
+# Chrome Web Store build artifacts
+extension-build.zip
+
