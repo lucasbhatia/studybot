@@ -2,8 +2,6 @@
 
 // Initialize on install
 chrome.runtime.onInstalled.addListener(() => {
-  console.log('StudyBot installed');
-  
   // Initialize storage
   chrome.storage.sync.get(['studybot_settings'], (result) => {
     if (!result.studybot_settings) {
@@ -50,7 +48,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 // Listen for tab changes to update side panel context
 chrome.tabs.onActivated.addListener((activeInfo) => {
-  console.log('Tab activated:', activeInfo.tabId);
+  // Tab context tracking for future features
 });
 
 // Periodic sync for future features (like spaced repetition)
@@ -60,7 +58,6 @@ if ('periodicSync' in ServiceWorkerRegistration.prototype) {
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'studybot-sync') {
-    console.log('StudyBot periodic sync triggered');
     // Future: sync stats, spaced repetition, etc.
   }
 });

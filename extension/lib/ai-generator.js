@@ -21,11 +21,9 @@ class AIGenerator {
 
     // Try Claude API first
     try {
-      console.log('Attempting to generate with Claude API...');
       const result = await this.claudeAPI.generateStudyMaterials(cleanText, contentTitle);
       
       if (result.success) {
-        console.log('Claude API generation successful');
         return {
           summary: {
             brief: result.summary.text.substring(0, 200),
