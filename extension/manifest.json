@@ -1,0 +1,63 @@
+{
+  "manifest_version": 3,
+  "name": "StudyBot - AI Study Assistant",
+  "version": "1.0.0",
+  "description": "Generate summaries, flashcards, and quizzes from any content",
+  "permissions": [
+    "storage",
+    "scripting",
+    "sidePanel",
+    "contextMenus",
+    "webRequest",
+    "tabs"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "side_panel": {
+    "default_path": "sidepanel/sidepanel.html"
+  },
+  "background": {
+    "service_worker": "background/service-worker.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content/content.js"
+      ],
+      "css": [
+        "content/content.css"
+      ],
+      "run_at": "document_end"
+    }
+  ],
+  "context_menus": [
+    {
+      "id": "studybot-extract",
+      "title": "Generate study materials"
+    },
+    {
+      "id": "studybot-selection",
+      "title": "StudyBot: Create from selection",
+      "contexts": [
+        "selection"
+      ]
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

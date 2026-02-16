@@ -1,1 +1,308 @@
-# StudyBot - AI Study Tool
+# StudyBot - AI-Powered Study Assistant Chrome Extension
+
+A production-quality Chrome extension that generates summaries, flashcards, and quizzes from any web content. Perfect for students looking to optimize their study workflow.
+
+## Features
+
+### 📝 **Content Extraction**
+- Extract text from any webpage with a single click
+- Floating button on every page for quick access
+- Right-click context menu integration
+- Smart detection of main content (articles, Canvas pages, etc.)
+- Automatic extraction from PDFs viewed in browser
+
+### 📚 **Summary Generation**
+- AI-powered summaries with three detail levels (Brief, Standard, Detailed)
+- Key concepts highlighted
+- Editable summaries
+- Copy to clipboard functionality
+
+### 🃏 **Flashcard System**
+- Auto-generated flashcards from extracted content
+- Beautiful card flip animations
+- Navigation (Previous, Next, Shuffle)
+- Category tagging (Definitions, Concepts, Formulas)
+- Mark cards as "Known" or "Still Learning"
+- Spaced repetition tracking
+- Edit, add, and delete cards
+- Card counter and progress tracking
+
+### 📋 **Quiz Generator**
+- Multiple choice questions with 4 options
+- True/False questions
+- Difficulty levels (Easy, Medium, Hard)
+- Immediate feedback (correct/incorrect)
+- Score tracking and progress bar
+- Detailed results review
+- Retry functionality
+
+### 📚 **Study Library**
+- Save multiple study sets
+- Search and filter study sets
+- View set statistics (card count, date created)
+- Quick access and organization
+
+### 🔄 **Data Management**
+- Export study sets as JSON
+- Import study sets from JSON files
+- Share study sets with classmates
+- Clear data with one click
+
+### 🎨 **Premium UI/UX**
+- Dark mode (default) + Light mode toggle
+- Smooth animations and transitions
+- Responsive design for any screen size
+- Intuitive navigation
+- Loading states and empty states
+- Toast notifications
+
+## Installation
+
+### For Development/Testing
+
+1. **Clone or download** the StudyBot repository:
+```bash
+cd ~/projects/studybot/extension
+```
+
+2. **Open Chrome** and go to `chrome://extensions/`
+
+3. **Enable Developer Mode** (toggle in top right)
+
+4. **Click "Load unpacked"** and select the `extension/` folder
+
+5. **Done!** The extension should now appear in your Chrome toolbar
+
+### Testing the Extension
+
+1. **Extract Content**:
+   - Click the StudyBot icon in your extension toolbar
+   - OR click the floating "S" button that appears on web pages
+   - OR right-click and select "Generate study materials"
+
+2. **View Your Study Sets**:
+   - Click the extension popup to see your Study Library
+   - Search for specific sets
+   - Open, export, or delete sets
+
+3. **Study**:
+   - Open a study set to access the side panel
+   - Use the Summary, Flashcard, and Quiz tabs
+   - Mark cards as known/learning
+   - Track your progress
+
+## Project Structure
+
+```
+extension/
+├── manifest.json                 # Chrome extension manifest (Manifest V3)
+├── popup/
+│   ├── popup.html               # Study library UI
+│   ├── popup.css                # Library styling
+│   └── popup.js                 # Library logic
+├── sidepanel/
+│   ├── sidepanel.html           # Main study interface (3 tabs)
+│   ├── sidepanel.css            # Study panel styling
+│   └── sidepanel.js             # Study logic
+├── content/
+│   ├── content.js               # Page content extraction
+│   └── content.css              # Content extraction UI
+├── background/
+│   └── service-worker.js        # Background tasks (Manifest V3)
+├── lib/
+│   ├── storage.js               # Chrome Storage API wrapper
+│   ├── ai-generator.js          # Template-based NLP for content generation
+│   └── share.js                 # Sharing utilities
+└── icons/
+    ├── icon16.png
+    ├── icon48.png
+    └── icon128.png
+```
+
+## How It Works
+
+### Content Extraction
+1. When you click "Extract," the content script analyzes the current webpage
+2. It identifies main content (avoiding sidebars, ads, navigation)
+3. Text is extracted and sent to the background service worker
+
+### AI Generation (Template-Based)
+The `ai-generator.js` uses rule-based NLP to:
+- Parse text into sentences and paragraphs
+- Identify definition patterns ("X is...", "X refers to...")
+- Extract key concepts and terms
+- Generate multiple-choice questions
+- Create true/false statements
+- Produce summaries at different detail levels
+
+This system is designed to be easily upgraded to use OpenAI/Claude APIs.
+
+### Storage
+- All data is stored locally using Chrome's `storage.sync` and `storage.local` APIs
+- Settings sync across your Chrome profile
+- Study sets are stored locally for fast access
+- No backend required for MVP
+
+### Sharing
+- Share links are generated by encoding study sets in base64
+- Classmates can import JSON files directly
+- For production, this could connect to a backend API
+
+## Technical Stack
+
+- **Manifest V3** - Latest Chrome extension standard
+- **Chrome APIs** - Storage, Side Panel, Scripting, Context Menus
+- **Vanilla JavaScript** - No external dependencies
+- **CSS3** - Animations, flexbox, responsive design
+
+## Features Implementation Status
+
+### ✅ Implemented
+- [x] Extension loads without errors
+- [x] Content extraction from webpages
+- [x] Study library (popup)
+- [x] Side panel with 3 tabs
+- [x] Flashcard generation and navigation
+- [x] Card flip animation
+- [x] Quiz generation
+- [x] Summary generation (3 detail levels)
+- [x] Storage and persistence
+- [x] Dark/Light mode toggle
+- [x] Export/Import JSON
+- [x] Share functionality
+- [x] Settings panel
+- [x] Premium UI with animations
+- [x] Responsive design
+- [x] Right-click context menu
+
+### 🎯 Future Enhancements
+- [ ] AI API integration (OpenAI/Claude)
+- [ ] Advanced spaced repetition algorithm
+- [ ] Cloud backup and sync
+- [ ] Collaborative study sessions
+- [ ] Mobile app companion
+- [ ] Study goals and streaks
+- [ ] Advanced analytics
+- [ ] Integration with Learning Management Systems (Canvas, Blackboard, etc.)
+
+## Browser Compatibility
+
+- **Chrome** 88+ (with Manifest V3 support)
+- **Chromium-based browsers** (Edge, Brave, Opera, etc.)
+
+## Data Privacy
+
+- All study materials are stored **locally** on your device
+- No data is sent to external servers (MVP version)
+- Full control over your study data
+- Export anytime to back up your sets
+
+## Development Notes
+
+### Adding AI API Integration
+
+To upgrade from template-based generation to Claude/OpenAI:
+
+1. Update `ai-generator.js` to call the API
+2. Add API key management to settings
+3. Update manifest with necessary permissions
+4. Implement error handling for API failures
+5. Cache responses to minimize API calls
+
+Example:
+```javascript
+async generateWithAI(text) {
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': this.apiKey,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'claude-opus',
+      messages: [{ role: 'user', content: `Summarize: ${text}` }],
+    }),
+  });
+  return response.json();
+}
+```
+
+### Debugging
+
+1. Open `chrome://extensions/`
+2. Find StudyBot and click "Details"
+3. Click "Inspect views: service worker" for background logs
+4. Right-click the extension icon → "Inspect popup" for popup logs
+5. Right-click on any webpage → "Inspect" and search for console logs from content scripts
+
+### Testing Checklist
+
+- [ ] Extension loads in Chrome without errors
+- [ ] Clicking extension icon opens popup
+- [ ] Popup displays study library
+- [ ] Side panel opens and shows three tabs
+- [ ] Content extraction works on regular webpages
+- [ ] Floating button appears on pages
+- [ ] Right-click context menu works
+- [ ] Flashcards generate and display
+- [ ] Card flip animation works smoothly
+- [ ] Previous/Next/Shuffle navigation works
+- [ ] Mark cards as known/learning works
+- [ ] Edit/add/delete cards works
+- [ ] Quiz generates questions
+- [ ] Quiz scoring works
+- [ ] Summary generates at all detail levels
+- [ ] Dark/light mode toggle works
+- [ ] Study sets persist after reload
+- [ ] Export/import JSON works
+- [ ] Share link copies to clipboard
+- [ ] Settings save and persist
+- [ ] No console errors
+
+## Troubleshooting
+
+### Extension Not Appearing
+- Verify you're in Developer Mode on `chrome://extensions/`
+- Check that you've loaded the correct folder
+- Try unpacking and re-packing the extension
+
+### Content Not Extracting
+- Some websites may block content scripts (check CSP)
+- Try right-clicking and selecting "Generate study materials"
+- Works best on text-heavy pages (articles, docs)
+
+### Cards Not Showing
+- Make sure content was extracted successfully
+- Check that the Study Library shows the set was saved
+- Try opening the set again from the popup
+
+### Storage Issues
+- Clear extension data: Settings → Privacy and security → Clear browsing data
+- Try exporting and re-importing your study sets
+- Check available disk space
+
+## Contributing
+
+Found a bug or have a feature idea? Let me know!
+
+1. Test thoroughly
+2. Document your changes
+3. Submit feedback with steps to reproduce
+
+## License
+
+MIT License - Feel free to use and modify for personal use.
+
+## Support
+
+For issues or questions:
+1. Check the troubleshooting section above
+2. Review the code comments
+3. Check Chrome DevTools console for errors
+4. Verify all files are in the correct folders
+
+---
+
+**Happy studying! 📚✨**
+
+Built with ❤️ for students who want to learn smarter.
