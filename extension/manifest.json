@@ -2,7 +2,8 @@
   "manifest_version": 3,
   "name": "StudyBot - AI Study Assistant",
   "version": "1.0.0",
-  "description": "Generate summaries, flashcards, and quizzes from any content",
+  "description": "Generate summaries, flashcards, and quizzes from any content with AI-powered study materials from webpages and Canvas LMS",
+  "author": "StudyBot Team",
   "permissions": [
     "storage",
     "scripting",
@@ -12,9 +13,19 @@
   ],
   "host_permissions": [
     "https://*.instructure.com/*",
-    "https://api.studybot.dev/*"
+    "https://api.studybot.dev/*",
+    "https://api.anthropic.com/*"
   ],
-  "host_permissions_reason": "Extract content from webpages and fetch Canvas LMS course content",
+  "host_permissions_reason": "Extract content from webpages, fetch Canvas LMS course content, and connect to Claude API",
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://api.anthropic.com https://api.studybot.dev https://*.instructure.com"
+  },
+  "externally_connectable": {
+    "matches": [
+      "https://api.anthropic.com/*",
+      "https://api.studybot.dev/*"
+    ]
+  },
   "action": {
     "default_popup": "popup/popup.html",
     "default_icon": {
