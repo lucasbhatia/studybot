@@ -33,6 +33,10 @@
           <span class="tab-icon">📋</span>
           <span>Quiz</span>
         </button>
+        <button class="tab-btn" data-tab="canvas">
+          <span class="tab-icon">🎓</span>
+          <span>Canvas</span>
+        </button>
       </nav>
     </header>
 
@@ -194,6 +198,76 @@
           </div>
         </div>
       </div>
+
+      <!-- Canvas Tab -->
+      <div id="canvas-tab" class="tab-content">
+        <div class="canvas-container">
+          <!-- Canvas Setup Screen -->
+          <div id="canvasSetup" class="canvas-screen">
+            <div class="canvas-icon">🎓</div>
+            <h3>Connect Canvas LMS</h3>
+            <p style="font-size: 12px; color: var(--secondary); margin-bottom: 12px;">
+              Import courses and assignments from Canvas to create study materials
+            </p>
+
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <div>
+                <label class="input-label">Canvas URL</label>
+                <input type="text" id="canvasUrl" class="input" placeholder="https://uk.instructure.com" />
+              </div>
+
+              <div>
+                <label class="input-label">API Token</label>
+                <input type="password" id="canvasToken" class="input" placeholder="Paste your Canvas API token" />
+                <p style="font-size: 11px; color: var(--secondary); margin-top: 6px;">
+                  Get token from Account Settings → Approved Integrations
+                </p>
+              </div>
+
+              <button id="connectCanvasBtn" class="btn btn-primary">Connect Canvas</button>
+              <div id="canvasStatus" style="font-size: 11px; display: none; padding: 8px; border-radius: 4px; text-align: center;"></div>
+            </div>
+          </div>
+
+          <!-- Canvas Courses Screen -->
+          <div id="canvasCourses" class="canvas-screen hidden">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+              <h3 style="margin: 0;">Your Courses</h3>
+              <button id="disconnectCanvasBtn" class="btn-small btn-secondary">Disconnect</button>
+            </div>
+
+            <div id="coursesList" class="canvas-list">
+              <!-- Courses loaded dynamically -->
+            </div>
+          </div>
+
+          <!-- Canvas Content Selection Screen -->
+          <div id="canvasContent" class="canvas-screen hidden">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+              <button id="backToCourses" class="btn-small btn-secondary" style="padding: 4px 8px;">← Back</button>
+              <h3 id="selectedCourseName" style="margin: 0; flex: 1;"></h3>
+            </div>
+
+            <div class="canvas-tabs">
+              <button class="canvas-tab-btn active" data-content="assignments">Assignments</button>
+              <button class="canvas-tab-btn" data-content="modules">Modules</button>
+              <button class="canvas-tab-btn" data-content="syllabus">Syllabus</button>
+            </div>
+
+            <div id="assignmentsList" class="canvas-list">
+              <!-- Assignments loaded dynamically -->
+            </div>
+
+            <div id="modulesList" class="canvas-list hidden">
+              <!-- Modules loaded dynamically -->
+            </div>
+
+            <div id="syllabusContent" class="canvas-list hidden" style="padding: 12px; border: 1px solid var(--border); border-radius: 4px;">
+              <!-- Syllabus content -->
+            </div>
+          </div>
+        </div>
+      </div>
     </main>
 
     <!-- Footer -->
@@ -213,6 +287,7 @@
 
   <script src="../lib/storage.js"></script>
   <script src="../lib/claude-api.js"></script>
+  <script src="../lib/canvas-api.js"></script>
   <script src="../lib/ai-generator.js"></script>
   <script src="../lib/share.js"></script>
   <script src="sidepanel.js"></script>

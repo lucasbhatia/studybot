@@ -8,12 +8,13 @@
     "scripting",
     "sidePanel",
     "contextMenus",
-    "webRequest",
     "tabs"
   ],
   "host_permissions": [
-    "<all_urls>"
+    "https://*.instructure.com/*",
+    "https://api.studybot.dev/*"
   ],
+  "host_permissions_reason": "Extract content from webpages and fetch Canvas LMS course content",
   "action": {
     "default_popup": "popup/popup.html",
     "default_icon": {

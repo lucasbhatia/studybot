@@ -769,3 +769,346 @@ function escapeHtml(text) {
 function showNotification(message, type = 'info') {
   console.log(`[${type.toUpperCase()}] ${message}`);
 }
+
+// ========== CANVAS LMS INTEGRATION ==========
+
+const canvasAPI = new CanvasAPIClient();
+
+// Canvas DOM elements
+const canvasSetup = document.getElementById('canvasSetup');
+const canvasCourses = document.getElementById('canvasCourses');
+const canvasContent = document.getElementById('canvasContent');
+const canvasUrl = document.getElementById('canvasUrl');
+const canvasToken = document.getElementById('canvasToken');
+const connectCanvasBtn = document.getElementById('connectCanvasBtn');
+const disconnectCanvasBtn = document.getElementById('disconnectCanvasBtn');
+const canvasStatus = document.getElementById('canvasStatus');
+const coursesList = document.getElementById('coursesList');
+const selectedCourseName = document.getElementById('selectedCourseName');
+const assignmentsList = document.getElementById('assignmentsList');
+const modulesList = document.getElementById('modulesList');
+const syllabusContent = document.getElementById('syllabusContent');
+const backToCourses = document.getElementById('backToCourses');
+
+let selectedCourseId = null;
+let canvasCoursesList = [];
+
+/**
+ * Initialize Canvas UI on load
+ */
+async function initializeCanvasUI() {
+  const config = await canvasAPI.getConfig();
+  
+  if (config.url && config.token) {
+    try {
+      await canvasAPI.initialize(config.url, config.token);
+      showCanvasCoursesScreen();
+    } catch (error) {
+      console.error('Canvas initialization failed:', error);
+      canvasAPI.clearConfig();
+      showCanvasSetupScreen();
+    }
+  } else {
+    showCanvasSetupScreen();
+  }
+}
+
+/**
+ * Show Canvas setup screen
+ */
+function showCanvasSetupScreen() {
+  canvasSetup.classList.remove('hidden');
+  canvasCourses.classList.add('hidden');
+  canvasContent.classList.add('hidden');
+  canvasUrl.value = '';
+  canvasToken.value = '';
+}
+
+/**
+ * Show Canvas courses screen
+ */
+function showCanvasCoursesScreen() {
+  canvasSetup.classList.add('hidden');
+  canvasCourses.classList.remove('hidden');
+  canvasContent.classList.add('hidden');
+  loadCanvasCourses();
+}
+
+/**
+ * Load Canvas courses
+ */
+async function loadCanvasCourses() {
+  try {
+    coursesList.innerHTML = '<div style="padding: 12px; text-align: center; color: var(--secondary);">Loading courses...</div>';
+    canvasCoursesList = await canvasAPI.getCourses();
+    
+    if (canvasCoursesList.length === 0) {
+      coursesList.innerHTML = '<div style="padding: 12px; text-align: center; color: var(--secondary);">No courses found</div>';
+      return;
+    }
+    
+    coursesList.innerHTML = canvasCoursesList
+      .map(
+        (course) => `
+      <div class="canvas-item" data-course-id="${course.id}">
+        <div class="canvas-item-title">${escapeHtml(course.name)}</div>
+        <div class="canvas-item-meta" style="font-size: 11px; color: var(--secondary); margin-top: 4px;">
+          ${course.course_code || ''} • ${course.total_students || 0} students
+        </div>
+        <button class="btn-small btn-primary" data-course-id="${course.id}" style="margin-top: 8px;">
+          View Content
+        </button>
+      </div>
+    `
+      )
+      .join('');
+    
+    // Attach event listeners
+    document.querySelectorAll('[data-course-id]').forEach((el) => {
+      el.addEventListener('click', (e) => {
+        if (e.target.classList.contains('btn-small')) {
+          selectedCourseId = e.target.dataset.courseId;
+          const course = canvasCoursesList.find((c) => c.id == selectedCourseId);
+          selectedCourseName.textContent = course.name;
+          showCanvasContentScreen();
+        }
+      });
+    });
+  } catch (error) {
+    console.error('Failed to load courses:', error);
+    coursesList.innerHTML = `<div style="padding: 12px; color: #f44336; font-size: 12px;">Error: ${error.message}</div>`;
+  }
+}
+
+/**
+ * Show Canvas content screen
+ */
+function showCanvasContentScreen() {
+  canvasSetup.classList.add('hidden');
+  canvasCourses.classList.add('hidden');
+  canvasContent.classList.remove('hidden');
+  
+  // Load assignments by default
+  loadCanvasAssignments();
+}
+
+/**
+ * Load Canvas assignments
+ */
+async function loadCanvasAssignments() {
+  try {
+    assignmentsList.innerHTML = '<div style="padding: 12px; text-align: center; color: var(--secondary);">Loading assignments...</div>';
+    const assignments = await canvasAPI.getAssignments(selectedCourseId);
+    
+    if (assignments.length === 0) {
+      assignmentsList.innerHTML = '<div style="padding: 12px; text-align: center; color: var(--secondary);">No assignments found</div>';
+      return;
+    }
+    
+    assignmentsList.innerHTML = assignments
+      .map(
+        (assignment) => `
+      <div class="canvas-item">
+        <div class="canvas-item-title">${escapeHtml(assignment.name)}</div>
+        <div class="canvas-item-meta" style="font-size: 11px; color: var(--secondary); margin-top: 4px;">
+          ${assignment.points_possible || 0} points • ${assignment.due_at ? 'Due: ' + new Date(assignment.due_at).toLocaleDateString() : 'No due date'}
+        </div>
+        <button class="btn-small btn-primary" data-assignment-id="${assignment.id}" style="margin-top: 8px;">
+          Create Study Set
+        </button>
+      </div>
+    `
+      )
+      .join('');
+    
+    // Attach event listeners
+    document.querySelectorAll('[data-assignment-id]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const assignmentId = btn.dataset.assignmentId;
+        await createStudySetFromCanvasAssignment(selectedCourseId, assignmentId);
+      });
+    });
+  } catch (error) {
+    console.error('Failed to load assignments:', error);
+    assignmentsList.innerHTML = `<div style="padding: 12px; color: #f44336; font-size: 12px;">Error: ${error.message}</div>`;
+  }
+}
+
+/**
+ * Create study set from Canvas assignment
+ */
+async function createStudySetFromCanvasAssignment(courseId, assignmentId) {
+  try {
+    showNotification('Extracting Canvas assignment...');
+    
+    const content = await canvasAPI.extractAssignmentContent(courseId, assignmentId);
+    
+    if (!content.content || content.content.trim().length === 0) {
+      showNotification('No content to extract from this assignment', 'error');
+      return;
+    }
+    
+    // Generate study materials using Claude
+    const materials = await aiGenerator.generateStudyMaterials(content.content, content.title);
+    
+    // Save as study set
+    const set = await storage.saveStudySet({
+      title: content.title,
+      sourceUrl: `canvas://${courseId}/${assignmentId}`,
+      content: content.content,
+      ...materials
+    });
+    
+    currentStudySet = set;
+    currentCards = set.flashcards;
+    currentCardIndex = 0;
+    cardFlipped = false;
+    
+    setTitle.textContent = set.title;
+    displayCard();
+    displaySummary();
+    switchTab('summary');
+    
+    showNotification('Study set created from Canvas!');
+  } catch (error) {
+    console.error('Failed to create study set:', error);
+    showNotification('Failed: ' + error.message, 'error');
+  }
+}
+
+/**
+ * Connect Canvas
+ */
+connectCanvasBtn.addEventListener('click', async () => {
+  const url = canvasUrl.value.trim();
+  const token = canvasToken.value.trim();
+  
+  if (!url || !token) {
+    showCanvasStatus('Please enter Canvas URL and API token', 'error');
+    return;
+  }
+  
+  connectCanvasBtn.disabled = true;
+  connectCanvasBtn.textContent = 'Connecting...';
+  showCanvasStatus('Testing connection...', 'info');
+  
+  try {
+    await canvasAPI.initialize(url, token);
+    await canvasAPI.saveConfig(url, token);
+    
+    showCanvasStatus('✓ Connected to Canvas!', 'success');
+    setTimeout(() => {
+      showCanvasCoursesScreen();
+    }, 1000);
+  } catch (error) {
+    console.error('Canvas connection error:', error);
+    showCanvasStatus('✗ Connection failed: ' + error.message, 'error');
+  } finally {
+    connectCanvasBtn.disabled = false;
+    connectCanvasBtn.textContent = 'Connect Canvas';
+  }
+});
+
+/**
+ * Disconnect Canvas
+ */
+disconnectCanvasBtn.addEventListener('click', async () => {
+  if (confirm('Disconnect Canvas?')) {
+    await canvasAPI.clearConfig();
+    showCanvasSetupScreen();
+  }
+});
+
+/**
+ * Back to courses
+ */
+backToCourses.addEventListener('click', () => {
+  showCanvasCoursesScreen();
+});
+
+/**
+ * Canvas tabs
+ */
+document.querySelectorAll('.canvas-tab-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const contentType = btn.dataset.content;
+    
+    // Update active button
+    document.querySelectorAll('.canvas-tab-btn').forEach((b) => b.classList.remove('active'));
+    btn.classList.add('active');
+    
+    // Show corresponding content
+    assignmentsList.classList.toggle('hidden', contentType !== 'assignments');
+    modulesList.classList.toggle('hidden', contentType !== 'modules');
+    syllabusContent.classList.toggle('hidden', contentType !== 'syllabus');
+    
+    if (contentType === 'modules') {
+      loadCanvasModules();
+    } else if (contentType === 'syllabus') {
+      loadCanvasSyllabus();
+    }
+  });
+});
+
+/**
+ * Load Canvas modules
+ */
+async function loadCanvasModules() {
+  try {
+    modulesList.innerHTML = '<div style="padding: 12px; text-align: center; color: var(--secondary);">Loading modules...</div>';
+    const modules = await canvasAPI.getModules(selectedCourseId);
+    
+    if (modules.length === 0) {
+      modulesList.innerHTML = '<div style="padding: 12px; text-align: center; color: var(--secondary);">No modules found</div>';
+      return;
+    }
+    
+    modulesList.innerHTML = modules
+      .map(
+        (module) => `
+      <div class="canvas-item">
+        <div class="canvas-item-title">${escapeHtml(module.name)}</div>
+        <div class="canvas-item-meta" style="font-size: 11px; color: var(--secondary); margin-top: 4px;">
+          ${module.items_count || 0} items
+        </div>
+      </div>
+    `
+      )
+      .join('');
+  } catch (error) {
+    console.error('Failed to load modules:', error);
+    modulesList.innerHTML = `<div style="padding: 12px; color: #f44336; font-size: 12px;">Error: ${error.message}</div>`;
+  }
+}
+
+/**
+ * Load Canvas syllabus
+ */
+async function loadCanvasSyllabus() {
+  try {
+    syllabusContent.innerHTML = '<div style="text-align: center; color: var(--secondary);">Loading syllabus...</div>';
+    const syllabus = await canvasAPI.getCourseSyllabus(selectedCourseId);
+    
+    if (!syllabus) {
+      syllabusContent.innerHTML = '<div style="text-align: center; color: var(--secondary);">No syllabus available</div>';
+      return;
+    }
+    
+    syllabusContent.innerHTML = canvasAPI.stripHtml(syllabus);
+  } catch (error) {
+    console.error('Failed to load syllabus:', error);
+    syllabusContent.innerHTML = `<div style="color: #f44336; font-size: 12px;">Error: ${error.message}</div>`;
+  }
+}
+
+/**
+ * Show Canvas status
+ */
+function showCanvasStatus(message, type) {
+  canvasStatus.textContent = message;
+  canvasStatus.style.display = 'block';
+  canvasStatus.style.color = type === 'success' ? '#4caf50' : type === 'error' ? '#f44336' : '#2196f3';
+}
+
+// Initialize Canvas UI when sidepanel loads
+initializeCanvasUI();
