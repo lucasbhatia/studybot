@@ -41,26 +41,50 @@ class ContentExtractor {
    * Extract main content from the page
    */
   extractPageContent() {
-    const content = this.getMainContent();
-    
-    if (!content || content.trim().length === 0) {
-      this.showNotification('No suitable content found on this page', 'error');
-      return;
-    }
+    this.showNotification('Extracting content...', 'info');
+    this.floatingButton.style.opacity = '0.5';
+    this.floatingButton.style.pointerEvents = 'none';
 
-    // Send to background/popup
-    chrome.runtime.sendMessage({
-      action: 'extractedContent',
-      content: content,
-      url: window.location.href,
-      title: document.title,
-    }, (response) => {
-      if (response && response.success) {
-        this.showNotification('Content extracted! Check the side panel.', 'success');
-        // Open side panel
-        chrome.runtime.sendMessage({ action: 'openSidePanel' });
+    try {
+      const content = this.getMainContent();
+      
+      if (!content || content.trim().length === 0) {
+        this.showNotification('No suitable content found on this page', 'error');
+        this.floatingButton.style.opacity = '1';
+        this.floatingButton.style.pointerEvents = 'auto';
+        return;
       }
-    });
+
+      // Send to background/popup
+      chrome.runtime.sendMessage({
+        action: 'extractedContent',
+        content: content,
+        url: window.location.href,
+        title: document.title,
+      }, (response) => {
+        this.floatingButton.style.opacity = '1';
+        this.floatingButton.style.pointerEvents = 'auto';
+
+        if (chrome.runtime.lastError) {
+          console.error('Message error:', chrome.runtime.lastError);
+          this.showNotification('Failed to extract content', 'error');
+          return;
+        }
+
+        if (response && response.success) {
+          this.showNotification('Content extracted! Opening study panel...', 'success');
+          // Open side panel
+          chrome.runtime.sendMessage({ action: 'openSidePanel' });
+        } else {
+          this.showNotification('Failed to process content', 'error');
+        }
+      });
+    } catch (error) {
+      console.error('Extraction error:', error);
+      this.showNotification('Error extracting content: ' + error.message, 'error');
+      this.floatingButton.style.opacity = '1';
+      this.floatingButton.style.pointerEvents = 'auto';
+    }
   }
 
   /**
@@ -100,26 +124,90 @@ class ContentExtractor {
   }
 
   /**
-   * Extract clean text from element
+   * Extract clean text from element with structure preservation
    */
   extractTextFromElement(element) {
-    const walker = document.createTreeWalker(
-      element,
-      NodeFilter.SHOW_TEXT,
-      null,
-      false
-    );
-
     let text = '';
-    let node;
+    const visitedNodes = new Set();
 
-    while (node = walker.nextNode()) {
-      const content = node.textContent.trim();
-      if (content.length > 0) {
-        text += content + '\n';
+    const walk = (node) => {
+      if (visitedNodes.has(node)) return;
+      visitedNodes.add(node);
+
+      // Skip certain elements
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const tag = node.tagName.toLowerCase();
+        
+        // Skip navigation, ads, sidebars
+        if (['script', 'style', 'nav', 'noscript'].includes(tag)) return;
+        if (node.classList.contains('ad') || node.classList.contains('advertisement') || 
+            node.classList.contains('sidebar') || node.classList.contains('widget')) {
+          return;
+        }
+
+        // Add heading with formatting
+        if (['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tag)) {
+          text += '\n\n' + node.textContent.trim() + '\n';
+          return; // Don't process children, already got text
+        }
+
+        // Handle lists
+        if (tag === 'ul' || tag === 'ol') {
+          text += '\n';
+          Array.from(node.children).forEach((li) => {
+            if (li.tagName.toLowerCase() === 'li') {
+              text += '• ' + li.textContent.trim() + '\n';
+            }
+          });
+          text += '\n';
+          return;
+        }
+
+        // Handle tables
+        if (tag === 'table') {
+          text += '\n[Table]\n';
+          Array.from(node.querySelectorAll('tr')).forEach((row) => {
+            const cells = Array.from(row.querySelectorAll('td, th'))
+              .map(cell => cell.textContent.trim())
+              .join(' | ');
+            if (cells) text += cells + '\n';
+          });
+          text += '\n';
+          return;
+        }
+
+        // Handle code blocks
+        if (tag === 'code' || tag === 'pre') {
+          text += '\n[Code]\n' + node.textContent + '\n\n';
+          return;
+        }
+
+        // Handle blockquotes
+        if (tag === 'blockquote') {
+          text += '\n> ' + node.textContent.trim() + '\n\n';
+          return;
+        }
+
+        // Handle paragraphs and divs
+        if (tag === 'p' || tag === 'div') {
+          const content = node.textContent.trim();
+          if (content.length > 0 && content.length < 5000) {
+            text += content + '\n\n';
+          }
+          return;
+        }
+      } else if (node.nodeType === Node.TEXT_NODE) {
+        const content = node.textContent.trim();
+        if (content.length > 0 && content.length < 1000) {
+          text += content + ' ';
+        }
       }
-    }
 
+      // Recurse to children
+      Array.from(node.childNodes).forEach(walk);
+    };
+
+    walk(element);
     return text.trim();
   }
 
