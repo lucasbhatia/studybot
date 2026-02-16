@@ -767,7 +767,7 @@ function escapeHtml(text) {
  * Show notification
  */
 function showNotification(message, type = 'info') {
-  console.log(`[${type.toUpperCase()}] ${message}`);
+  notificationManager.show(message, type);
 }
 
 // ========== CANVAS LMS INTEGRATION ==========

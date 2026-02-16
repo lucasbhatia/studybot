@@ -414,6 +414,5 @@ function formatDate(dateStr) {
  * Show notification
  */
 function showNotification(message, type = 'info') {
-  // For now, just log. In a real app, we'd show a toast
-  console.log(`[${type.toUpperCase()}] ${message}`);
+  notificationManager.show(message, type);
 }
