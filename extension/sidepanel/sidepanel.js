@@ -99,8 +99,8 @@ async function applyTheme() {
  * Load current study set
  */
 async function loadStudySet() {
-  let setId = await chrome.storage.local.get('currentStudySetId');
-  setId = setId.currentStudySetId;
+  let result = await chrome.storage.local.get('currentStudySetId');
+  let setId = result && result.currentStudySetId ? result.currentStudySetId : null;
 
   if (setId) {
     currentStudySet = await storage.getStudySet(setId);

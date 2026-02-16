@@ -31,10 +31,42 @@ class StorageManager {
   }
 
   /**
+   * Check storage quota and warn if usage is high
+   */
+  async checkStorageQuota() {
+    try {
+      const items = await chrome.storage.local.get(null);
+      const estimatedSize = JSON.stringify(items).length; // Rough estimate in bytes
+      const quotaEstimate = 5 * 1024 * 1024; // Chrome local storage ~5MB
+      const usagePercent = (estimatedSize / quotaEstimate) * 100;
+      
+      return {
+        usedBytes: estimatedSize,
+        quotaBytes: quotaEstimate,
+        usagePercent: usagePercent,
+        isNearLimit: usagePercent > 80,
+        isFull: usagePercent > 95,
+      };
+    } catch (error) {
+      console.error('Storage quota check failed:', error);
+      return { usagePercent: 0, isNearLimit: false, isFull: false };
+    }
+  }
+
+  /**
    * Save a new study set
    */
   async saveStudySet(set) {
     const sets = await this.getStudySets();
+    
+    // Check storage quota before saving
+    const quotaStatus = await this.checkStorageQuota();
+    if (quotaStatus.isFull) {
+      throw new Error('Storage is full. Please delete some study sets to continue.');
+    }
+    if (quotaStatus.isNearLimit) {
+      console.warn('Storage is 80% full. Consider deleting old study sets.');
+    }
     
     const newSet = {
       id: this.generateId(),

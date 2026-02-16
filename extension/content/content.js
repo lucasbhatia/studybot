@@ -46,7 +46,7 @@ class ContentExtractor {
     this.floatingButton.style.pointerEvents = 'none';
 
     try {
-      const content = this.getMainContent();
+      let content = this.getMainContent();
       
       if (!content || content.trim().length === 0) {
         this.showNotification('No suitable content found on this page', 'error');
@@ -55,12 +55,21 @@ class ContentExtractor {
         return;
       }
 
+      // Truncate very long content with notice
+      const MAX_CONTENT_LENGTH = 50000;
+      let wasTruncated = false;
+      if (content.length > MAX_CONTENT_LENGTH) {
+        content = content.substring(0, MAX_CONTENT_LENGTH) + '\n\n[Content truncated - exceeded 50KB limit]';
+        wasTruncated = true;
+      }
+
       // Send to background/popup
       chrome.runtime.sendMessage({
         action: 'extractedContent',
         content: content,
         url: window.location.href,
         title: document.title,
+        wasTruncated: wasTruncated,
       }, (response) => {
         this.floatingButton.style.opacity = '1';
         this.floatingButton.style.pointerEvents = 'auto';

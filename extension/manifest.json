@@ -44,7 +44,9 @@
   "content_scripts": [
     {
       "matches": [
-        "<all_urls>"
+        "https://*",
+        "http://*",
+        "file:///*"
       ],
       "js": [
         "content/content.js"
@@ -52,7 +54,11 @@
       "css": [
         "content/content.css"
       ],
-      "run_at": "document_end"
+      "run_at": "document_end",
+      "exclude_matches": [
+        "https://chrome.google.com/*",
+        "https://chromewebstore.google.com/*"
+      ]
     }
   ],
   "context_menus": [

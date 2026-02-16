@@ -1,5 +1,11 @@
 /* StudyBot Content Script Styles */
 
+:root {
+  --primary: #3B82F6;
+  --primary-dark: #2563EB;
+  --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
 .studybot-floating-btn {
   position: fixed;
   bottom: 30px;
@@ -7,7 +13,7 @@
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
   color: white;
   display: flex;
   align-items: center;

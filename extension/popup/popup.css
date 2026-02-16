@@ -32,11 +32,15 @@ html, body {
   line-height: 1.5;
 }
 
-/* Dark Mode */
+/* Light Mode Overrides */
 body.light-mode {
   --bg-dark: #FFFFFF;
   --bg-dark-light: #F3F4F6;
   --text-light: #111827;
+  --text-dark: #1F2937;
+  --border: #D1D5DB;
+  --border-dark: #9CA3AF;
+  --secondary: #4B5563;
 }
 
 .popup-container {
