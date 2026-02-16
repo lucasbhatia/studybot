@@ -75,6 +75,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   await storage.initializeSettings();
   await applyTheme();
   setupEventListeners();
+  
+  // Show onboarding if first time
+  const hasCompleted = await onboarding.hasCompleted();
+  if (!hasCompleted) {
+    await onboarding.show();
+  }
+  
   await loadStudySet();
 });
 
