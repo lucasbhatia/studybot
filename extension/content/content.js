@@ -284,7 +284,11 @@ class ContentExtractor {
           title: document.title,
           isCanvas: this.isCanvasPage(),
         });
+      } else if (request.action === 'captureContent') {
+        this.extractPageContent();
+        sendResponse({ success: true });
       }
+      return true;
     });
   }
 
