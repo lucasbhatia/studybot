@@ -701,28 +701,35 @@ async function handleExtractedContent(data) {
   const content = data.content;
   const title = data.title || 'Untitled';
 
-  // Generate study materials
-  const materials = aiGenerator.generateStudyMaterials(content, title);
+  try {
+    showNotification('Generating study materials...');
+    
+    // Generate study materials (now async with Claude API)
+    const materials = await aiGenerator.generateStudyMaterials(content, title);
 
-  // Save to storage
-  const set = await storage.saveStudySet({
-    title: title,
-    sourceUrl: data.url,
-    content: content,
-    ...materials
-  });
+    // Save to storage
+    const set = await storage.saveStudySet({
+      title: title,
+      sourceUrl: data.url,
+      content: content,
+      ...materials
+    });
 
-  currentStudySet = set;
-  currentCards = set.flashcards;
-  currentCardIndex = 0;
-  cardFlipped = false;
+    currentStudySet = set;
+    currentCards = set.flashcards;
+    currentCardIndex = 0;
+    cardFlipped = false;
 
-  setTitle.textContent = set.title;
-  displayCard();
-  displaySummary();
-  switchTab('summary');
+    setTitle.textContent = set.title;
+    displayCard();
+    displaySummary();
+    switchTab('summary');
 
-  showNotification('Study set created!');
+    showNotification('Study set created!');
+  } catch (error) {
+    console.error('Failed to generate study materials:', error);
+    showNotification('Failed to generate study materials: ' + error.message, 'error');
+  }
 }
 
 /**

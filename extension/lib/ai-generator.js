@@ -1,8 +1,9 @@
-// AI Generator - Template-based NLP for MVP
-// Can be extended with OpenAI/Claude API later
+// AI Generator - Tries Claude API first, falls back to templates
+// Supports both user API keys (BYOK) and proxy server
 
 class AIGenerator {
   constructor() {
+    this.claudeAPI = new ClaudeAPIService();
     this.definitionPatterns = [
       /^(.+?)\s+is\s+(.+?)$/i,
       /^(.+?)\s+refers?\s+to\s+(.+?)$/i,
@@ -13,9 +14,39 @@ class AIGenerator {
 
   /**
    * Generate complete study materials from text
+   * Tries Claude API first, falls back to template-based generation
    */
-  generateStudyMaterials(text, contentTitle = 'Untitled') {
+  async generateStudyMaterials(text, contentTitle = 'Untitled') {
     const cleanText = this.sanitizeText(text);
+
+    // Try Claude API first
+    try {
+      console.log('Attempting to generate with Claude API...');
+      const result = await this.claudeAPI.generateStudyMaterials(cleanText, contentTitle);
+      
+      if (result.success) {
+        console.log('Claude API generation successful');
+        return {
+          summary: {
+            brief: result.summary.text.substring(0, 200),
+            standard: result.summary.text,
+            detailed: result.summary.text,
+          },
+          flashcards: result.flashcards || [],
+          quiz: this.formatQuizFromAPI(result.quiz || []),
+          metadata: {
+            title: contentTitle,
+            characterCount: cleanText.length,
+            generatedAt: new Date().toISOString(),
+            source: 'claude-api',
+          },
+        };
+      }
+    } catch (error) {
+      console.warn('Claude API generation failed, falling back to templates:', error.message);
+    }
+
+    // Fallback to template-based generation
     const sentences = this.extractSentences(cleanText);
     const paragraphs = this.extractParagraphs(cleanText);
     
@@ -32,8 +63,30 @@ class AIGenerator {
         characterCount: cleanText.length,
         sentenceCount: sentences.length,
         generatedAt: new Date().toISOString(),
+        source: 'template-fallback',
       },
     };
+  }
+
+  /**
+   * Format quiz from Claude API response
+   */
+  formatQuizFromAPI(questions) {
+    return questions.map((q) => ({
+      id: this.generateId(),
+      question: q.question,
+      type: q.type || 'multiple-choice',
+      correctAnswerIndex: q.correctAnswerIndex || 0,
+      difficulty: q.difficulty || 'medium',
+      options: q.options || [],
+    }));
+  }
+
+  /**
+   * Generate unique ID
+   */
+  generateId() {
+    return `card_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
   /**

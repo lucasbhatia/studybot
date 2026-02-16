@@ -93,6 +93,46 @@
           </label>
         </div>
 
+        <hr style="margin: 16px 0; border: none; border-top: 1px solid var(--border);">
+
+        <div class="setting-group">
+          <label class="setting-label">AI Generation</label>
+          <p style="font-size: 12px; color: var(--secondary); margin: 8px 0;">
+            Configure how study materials are generated. You can use your own Claude API key or the default proxy.
+          </p>
+        </div>
+
+        <div class="setting-group">
+          <label for="apiKeyInput" class="setting-label">Claude API Key (Optional)</label>
+          <div style="display: flex; gap: 8px;">
+            <input type="password" id="apiKeyInput" class="input" placeholder="sk-ant-..." autocomplete="off">
+            <button id="testApiKeyBtn" class="btn btn-secondary" style="flex-shrink: 0; white-space: nowrap;">Test</button>
+          </div>
+          <p style="font-size: 11px; color: var(--secondary); margin-top: 6px;">
+            Get your key from <a href="https://console.anthropic.com/account/keys" target="_blank">console.anthropic.com</a>
+          </p>
+          <div id="apiKeyStatus" style="font-size: 11px; margin-top: 6px; display: none;"></div>
+        </div>
+
+        <div class="setting-group">
+          <label for="useProxyToggle" class="setting-label">
+            <input type="checkbox" id="useProxyToggle" class="checkbox" checked>
+            <span>Use Default Proxy (free tier: 5 generations/month)</span>
+          </label>
+        </div>
+
+        <div class="setting-group" id="usageSection" style="display: none;">
+          <label class="setting-label">Monthly Usage</label>
+          <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
+            <div style="flex: 1; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden;">
+              <div id="usageBar" style="height: 100%; width: 0%; background: var(--accent); transition: width 0.3s;"></div>
+            </div>
+            <div style="font-size: 12px; color: var(--secondary);" id="usageText">0/5</div>
+          </div>
+        </div>
+
+        <hr style="margin: 16px 0; border: none; border-top: 1px solid var(--border);">
+
         <div class="setting-group danger">
           <button id="clearDataBtn" class="btn btn-danger">Clear All Data</button>
         </div>
@@ -104,6 +144,7 @@
   <input type="file" id="fileInput" accept=".json" hidden>
 
   <script src="../lib/storage.js"></script>
+  <script src="../lib/claude-api.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

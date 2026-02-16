@@ -18,16 +18,24 @@ const fileInput = document.getElementById('fileInput');
 const totalSetsEl = document.getElementById('totalSets');
 const totalCardsEl = document.getElementById('totalCards');
 const studyStreakEl = document.getElementById('studyStreak');
+const apiKeyInput = document.getElementById('apiKeyInput');
+const testApiKeyBtn = document.getElementById('testApiKeyBtn');
+const useProxyToggle = document.getElementById('useProxyToggle');
+const apiKeyStatus = document.getElementById('apiKeyStatus');
+const usageSection = document.getElementById('usageSection');
 
 let allStudySets = [];
 let currentSearchQuery = '';
+let claudeAPI = null;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
   await storage.initializeSettings();
+  claudeAPI = new ClaudeAPIService();
   await loadStudySets();
   await loadSettings();
   await updateStats();
+  setupEventListeners();
 });
 
 /**
@@ -164,6 +172,19 @@ async function loadSettings() {
   detailLevelSelect.value = settings.aiDetailLevel;
   notificationsToggle.checked = settings.notifications;
   
+  // Load API key settings
+  const config = await claudeAPI.getConfig();
+  if (config.apiKey) {
+    apiKeyInput.value = config.apiKey.substring(0, 10) + '...' + config.apiKey.substring(config.apiKey.length - 4);
+    apiKeyInput.disabled = true;
+  }
+  useProxyToggle.checked = config.useProxy !== false;
+  
+  // Show usage meter if using proxy
+  if (config.useProxy) {
+    updateUsageMeter();
+  }
+  
   applyTheme(settings.darkMode);
 }
 
@@ -219,6 +240,77 @@ darkModeToggle.addEventListener('change', async (e) => {
   await storage.updateSetting('darkMode', e.target.checked);
   applyTheme(e.target.checked);
 });
+
+/**
+ * Setup API key and proxy event listeners
+ */
+function setupEventListeners() {
+  testApiKeyBtn.addEventListener('click', testApiKey);
+  useProxyToggle.addEventListener('change', async (e) => {
+    chrome.storage.sync.set({ use_proxy: e.target.checked });
+    if (e.target.checked) {
+      updateUsageMeter();
+    } else {
+      usageSection.style.display = 'none';
+    }
+  });
+}
+
+/**
+ * Test Claude API key
+ */
+async function testApiKey() {
+  const key = apiKeyInput.value.trim();
+  
+  if (!key) {
+    showApiKeyStatus('Please enter an API key', 'error');
+    return;
+  }
+
+  testApiKeyBtn.disabled = true;
+  testApiKeyBtn.textContent = 'Testing...';
+  showApiKeyStatus('Testing API key...', 'info');
+
+  try {
+    const result = await claudeAPI.testApiKey(key);
+    
+    if (result.success) {
+      await claudeAPI.saveApiKey(key);
+      showApiKeyStatus('✓ API key valid and saved', 'success');
+      apiKeyInput.disabled = true;
+    } else {
+      showApiKeyStatus('✗ ' + (result.error || 'Invalid API key'), 'error');
+    }
+  } catch (error) {
+    showApiKeyStatus('✗ Error testing key: ' + error.message, 'error');
+  } finally {
+    testApiKeyBtn.disabled = false;
+    testApiKeyBtn.textContent = 'Test';
+  }
+}
+
+/**
+ * Show API key status message
+ */
+function showApiKeyStatus(message, type) {
+  apiKeyStatus.textContent = message;
+  apiKeyStatus.style.display = 'block';
+  apiKeyStatus.style.color = type === 'success' ? '#4caf50' : type === 'error' ? '#f44336' : '#2196f3';
+}
+
+/**
+ * Update usage meter for proxy
+ */
+async function updateUsageMeter() {
+  const stats = await storage.getStats();
+  const usage = stats.generationsThisMonth || 0;
+  const limit = 5; // Free tier limit
+  
+  const percentage = Math.min((usage / limit) * 100, 100);
+  document.getElementById('usageBar').style.width = percentage + '%';
+  document.getElementById('usageText').textContent = usage + '/' + limit;
+  usageSection.style.display = 'block';
+}
 
 /**
  * Detail level change
