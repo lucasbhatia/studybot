@@ -70,9 +70,22 @@ class ShareManager {
     const a = document.createElement('a');
     a.href = url;
     a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    
+    if (document.body) {
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } else {
+      // Fallback if body doesn't exist yet
+      document.addEventListener('DOMContentLoaded', () => {
+        if (document.body) {
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        }
+      });
+    }
+    
     URL.revokeObjectURL(url);
   }
 }

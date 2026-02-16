@@ -82,8 +82,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     await onboarding.show();
   }
   
+  // Check for pending extracted content from storage (in case sidepanel opened after extraction)
+  await checkAndLoadPendingContent();
+  
   await loadStudySet();
 });
+
+/**
+ * Check for pending extracted content and load it if found
+ */
+async function checkAndLoadPendingContent() {
+  try {
+    const result = await chrome.storage.local.get('pendingExtractedContent');
+    if (result.pendingExtractedContent) {
+      const data = result.pendingExtractedContent;
+      // Clear it so we don't process it again
+      await chrome.storage.local.remove('pendingExtractedContent');
+      // Process the extracted content
+      await handleExtractedContent(data);
+    }
+  } catch (error) {
+    console.error('Failed to check pending content:', error);
+  }
+}
 
 /**
  * Apply theme

@@ -164,7 +164,15 @@ if (!document.getElementById('notification-styles')) {
       }
     }
   `;
-  document.head.appendChild(style);
+  if (document.head) {
+    document.head.appendChild(style);
+  } else {
+    document.addEventListener('DOMContentLoaded', () => {
+      if (document.head) {
+        document.head.appendChild(style);
+      }
+    });
+  }
 }
 
 // Create global instance

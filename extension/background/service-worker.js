@@ -48,7 +48,30 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 
 // Handle messages from content scripts and popups
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'openSidePanel') {
+  if (request.action === 'extractedContent') {
+    // Store extracted content temporarily so sidepanel can access it even if opened after extraction
+    chrome.storage.local.set({
+      pendingExtractedContent: {
+        content: request.content,
+        url: request.url,
+        title: request.title,
+        wasTruncated: request.wasTruncated,
+        isSelection: request.isSelection,
+        timestamp: Date.now(),
+      }
+    }, () => {
+      // Notify any listening sidepanels/popups
+      try {
+        chrome.runtime.sendMessage({
+          action: 'extractedContentStored',
+          data: request
+        });
+      } catch (e) {
+        // Receiver may not exist yet, that's okay
+      }
+    });
+    sendResponse({ received: true });
+  } else if (request.action === 'openSidePanel') {
     if (chrome.sidePanel && chrome.sidePanel.open && sender.tab) {
       chrome.sidePanel.open({ tabId: sender.tab.id }).catch(() => {});
     }
@@ -56,7 +79,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   } else if (request.action === 'getPageContent') {
     sendResponse({ received: true });
   }
-  return false;
+  return true; // Keep channel open for async responses
 });
 
 // Listen for tab changes

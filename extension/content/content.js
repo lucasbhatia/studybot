@@ -65,30 +65,41 @@ class ContentExtractor {
         wasTruncated = true;
       }
 
-      // Send to background/popup
-      chrome.runtime.sendMessage({
-        action: 'extractedContent',
-        content: content,
-        url: window.location.href,
-        title: document.title,
-        wasTruncated: wasTruncated,
-      }, (response) => {
+      // Send to background/popup with try-catch for invalidated context
+      try {
+        chrome.runtime.sendMessage({
+          action: 'extractedContent',
+          content: content,
+          url: window.location.href,
+          title: document.title,
+          wasTruncated: wasTruncated,
+        }, (response) => {
+          this.floatingButton.style.opacity = '1';
+          this.floatingButton.style.pointerEvents = 'auto';
+
+          if (chrome.runtime.lastError) {
+            // Side panel may not be open yet — that's okay, open it and it will re-extract
+            this.showNotification('Opening study panel...', 'info');
+            try {
+              chrome.runtime.sendMessage({ action: 'openSidePanel' });
+            } catch (e) {
+              console.warn('Failed to send openSidePanel message (context invalidated)', e);
+            }
+            return;
+          }
+
+          if (response && response.received) {
+            this.showNotification('Content extracted! Generating study materials...', 'success');
+          } else {
+            this.showNotification('Content captured — open the side panel to generate', 'info');
+          }
+        });
+      } catch (e) {
+        console.warn('Extension context invalidated, failing silently:', e);
         this.floatingButton.style.opacity = '1';
         this.floatingButton.style.pointerEvents = 'auto';
-
-        if (chrome.runtime.lastError) {
-          // Side panel may not be open yet — that's okay, open it and it will re-extract
-          this.showNotification('Opening study panel...', 'info');
-          chrome.runtime.sendMessage({ action: 'openSidePanel' });
-          return;
-        }
-
-        if (response && response.received) {
-          this.showNotification('Content extracted! Generating study materials...', 'success');
-        } else {
-          this.showNotification('Content captured — open the side panel to generate', 'info');
-        }
-      });
+        // Don't show error to user - extension was likely reloaded
+      }
     } catch (error) {
       console.error('Extraction error:', error);
       this.showNotification('Error extracting content: ' + error.message, 'error');
@@ -272,16 +283,24 @@ class ContentExtractor {
         const text = request.text || window.getSelection().toString();
 
         if (text) {
-          chrome.runtime.sendMessage({
-            action: 'extractedContent',
-            content: text,
-            url: window.location.href,
-            title: document.title,
-            isSelection: true,
-          });
+          try {
+            chrome.runtime.sendMessage({
+              action: 'extractedContent',
+              content: text,
+              url: window.location.href,
+              title: document.title,
+              isSelection: true,
+            });
 
-          this.showNotification('Selected text captured!', 'success');
-          chrome.runtime.sendMessage({ action: 'openSidePanel' });
+            this.showNotification('Selected text captured!', 'success');
+            try {
+              chrome.runtime.sendMessage({ action: 'openSidePanel' });
+            } catch (e) {
+              console.warn('Failed to send openSidePanel message (context invalidated)', e);
+            }
+          } catch (e) {
+            console.warn('Failed to send extractedContent message (context invalidated)', e);
+          }
         }
 
         sendResponse({ success: true });
