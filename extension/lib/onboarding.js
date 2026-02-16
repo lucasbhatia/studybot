@@ -40,10 +40,11 @@ class OnboardingManager {
       },
       {
         id: 'canvas',
-        title: 'Step 4: Canvas LMS (Optional)',
-        content: 'Connect your Canvas account to import courses, assignments, and syllabi directly into StudyBot. No Canvas account? You can skip this.',
+        title: 'Step 4: Connect Canvas (Optional)',
+        content: 'Import your courses and assignments from Canvas. If you have a Canvas account, follow the quick setup below. No Canvas? You can skip this.',
         icon: '🎓',
         buttons: ['back', 'skip', 'next'],
+        hasForm: true,
       },
       {
         id: 'ready',
@@ -131,6 +132,232 @@ class OnboardingManager {
   }
 
   /**
+   * Create Canvas token setup form
+   */
+  createCanvasSetupForm() {
+    const form = document.createElement('div');
+    form.style.cssText = `
+      background: #F3F4F6;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+      font-size: 13px;
+    `;
+
+    // Instructions
+    const instructions = document.createElement('div');
+    instructions.style.cssText = `
+      margin-bottom: 12px;
+      line-height: 1.5;
+      color: #374151;
+    `;
+    instructions.innerHTML = `
+      <strong style="display: block; margin-bottom: 8px;">🔑 Generate Your Canvas Token:</strong>
+      <ol style="margin: 0 0 0 16px; padding: 0;">
+        <li style="margin-bottom: 4px;">Go to Canvas → Click your profile icon (top left)</li>
+        <li style="margin-bottom: 4px;">Click <strong>Settings</strong></li>
+        <li style="margin-bottom: 4px;">Scroll to <strong>Approved Integrations</strong></li>
+        <li style="margin-bottom: 4px;">Click <strong>+ New Access Token</strong></li>
+        <li style="margin-bottom: 4px;">Purpose: <em>StudyBot</em> | Leave Expiry blank</li>
+        <li>Click <strong>Generate Token</strong> → Copy it</li>
+      </ol>
+    `;
+
+    // Canvas URL field
+    const urlLabel = document.createElement('label');
+    urlLabel.style.cssText = `
+      display: block;
+      margin-top: 12px;
+      margin-bottom: 4px;
+      font-weight: 500;
+      color: #1f2937;
+    `;
+    urlLabel.textContent = 'Canvas URL';
+
+    const urlSelect = document.createElement('select');
+    urlSelect.id = 'canvas-url-select';
+    urlSelect.style.cssText = `
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #D1D5DB;
+      border-radius: 4px;
+      font-size: 13px;
+      margin-bottom: 8px;
+    `;
+    urlSelect.innerHTML = `
+      <option value="" selected disabled>Select your university or enter custom URL</option>
+      <option value="https://canvas.instructure.com">canvas.instructure.com (US)</option>
+      <option value="https://uk.instructure.com">uk.instructure.com (UK)</option>
+      <option value="https://au.instructure.com">au.instructure.com (Australia)</option>
+      <option value="custom">Custom Canvas URL</option>
+    `;
+
+    // Custom URL input (hidden by default)
+    const customUrlInput = document.createElement('input');
+    customUrlInput.id = 'canvas-url-custom';
+    customUrlInput.type = 'text';
+    customUrlInput.placeholder = 'https://your-university.instructure.com';
+    customUrlInput.style.cssText = `
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #D1D5DB;
+      border-radius: 4px;
+      font-size: 13px;
+      display: none;
+      margin-bottom: 8px;
+    `;
+
+    urlSelect.addEventListener('change', (e) => {
+      if (e.target.value === 'custom') {
+        customUrlInput.style.display = 'block';
+        customUrlInput.focus();
+      } else {
+        customUrlInput.style.display = 'none';
+      }
+    });
+
+    // Token field
+    const tokenLabel = document.createElement('label');
+    tokenLabel.style.cssText = `
+      display: block;
+      margin-bottom: 4px;
+      font-weight: 500;
+      color: #1f2937;
+    `;
+    tokenLabel.textContent = 'Canvas Token';
+
+    const tokenInput = document.createElement('input');
+    tokenInput.id = 'canvas-token-input';
+    tokenInput.type = 'password';
+    tokenInput.placeholder = 'Paste your Canvas token here';
+    tokenInput.style.cssText = `
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #D1D5DB;
+      border-radius: 4px;
+      font-size: 13px;
+      margin-bottom: 8px;
+      font-family: monospace;
+    `;
+
+    // Status message
+    const status = document.createElement('div');
+    status.id = 'canvas-status';
+    status.style.cssText = `
+      display: none;
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      margin-top: 8px;
+      text-align: center;
+      font-weight: 500;
+    `;
+
+    // Connect button
+    const connectBtn = document.createElement('button');
+    connectBtn.id = 'canvas-connect-btn';
+    connectBtn.textContent = 'Connect Canvas';
+    connectBtn.style.cssText = `
+      width: 100%;
+      padding: 8px;
+      background: #3B82F6;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: background 0.2s;
+    `;
+    connectBtn.onmouseover = () => (connectBtn.style.background = '#2563EB');
+    connectBtn.onmouseout = () => (connectBtn.style.background = '#3B82F6');
+    connectBtn.onclick = async (e) => {
+      e.preventDefault();
+      await this.handleCanvasConnect(urlSelect, customUrlInput, tokenInput, connectBtn, status);
+    };
+
+    // Assemble
+    form.appendChild(instructions);
+    form.appendChild(urlLabel);
+    form.appendChild(urlSelect);
+    form.appendChild(customUrlInput);
+    form.appendChild(tokenLabel);
+    form.appendChild(tokenInput);
+    form.appendChild(connectBtn);
+    form.appendChild(status);
+
+    return form;
+  }
+
+  /**
+   * Handle Canvas token connection in onboarding
+   */
+  async handleCanvasConnect(urlSelect, customUrlInput, tokenInput, connectBtn, statusEl) {
+    const url = urlSelect.value === 'custom' ? customUrlInput.value : urlSelect.value;
+    const token = tokenInput.value;
+
+    if (!url || !token) {
+      this.showCanvasStatus(statusEl, 'Please enter Canvas URL and token', 'error');
+      return;
+    }
+
+    connectBtn.disabled = true;
+    connectBtn.textContent = 'Connecting...';
+    this.showCanvasStatus(statusEl, 'Validating token...', 'loading');
+
+    try {
+      // Use canvas token service to validate and connect
+      if (typeof canvasToken === 'undefined') {
+        throw new Error('Canvas token service not loaded');
+      }
+
+      const result = await canvasToken.connect(url, token);
+
+      if (result.success) {
+        this.showCanvasStatus(
+          statusEl,
+          `✓ Connected as ${result.profile.name}!`,
+          'success'
+        );
+        connectBtn.textContent = 'Connected ✓';
+        tokenInput.disabled = true;
+        urlSelect.disabled = true;
+        customUrlInput.disabled = true;
+      } else {
+        throw new Error(result.error || 'Connection failed');
+      }
+    } catch (error) {
+      this.showCanvasStatus(
+        statusEl,
+        `✗ ${error.message}`,
+        'error'
+      );
+      connectBtn.disabled = false;
+      connectBtn.textContent = 'Connect Canvas';
+    }
+  }
+
+  /**
+   * Show Canvas status message
+   */
+  showCanvasStatus(statusEl, message, type) {
+    statusEl.style.display = 'block';
+    statusEl.textContent = message;
+
+    if (type === 'success') {
+      statusEl.style.background = '#DCFCE7';
+      statusEl.style.color = '#166534';
+    } else if (type === 'error') {
+      statusEl.style.background = '#FEE2E2';
+      statusEl.style.color = '#991B1B';
+    } else if (type === 'loading') {
+      statusEl.style.background = '#DBEAFE';
+      statusEl.style.color = '#1E40AF';
+    }
+  }
+
+  /**
    * Create onboarding UI
    */
   createUI() {
@@ -205,6 +432,12 @@ class OnboardingManager {
       white-space: pre-wrap;
     `;
     content.textContent = step.content;
+
+    // Canvas setup form (if needed)
+    let canvasFormElement = null;
+    if (step.hasForm && step.id === 'canvas') {
+      canvasFormElement = this.createCanvasSetupForm();
+    }
 
     // Buttons
     const buttonContainer = document.createElement('div');
@@ -326,6 +559,7 @@ class OnboardingManager {
     modal.appendChild(title);
     if (subtitle) modal.appendChild(subtitle);
     modal.appendChild(content);
+    if (canvasFormElement) modal.appendChild(canvasFormElement);
     modal.appendChild(buttonContainer);
 
     container.appendChild(modal);

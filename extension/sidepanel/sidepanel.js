@@ -863,20 +863,29 @@ let canvasCoursesList = [];
  * Initialize Canvas UI on load
  */
 async function initializeCanvasUI() {
-  const config = await canvasAPI.getConfig();
-  
-  if (config.url && config.token) {
+  // Check if user already has a Canvas token connected
+  if (canvasToken.isConnected()) {
     try {
-      await canvasAPI.initialize(config.url, config.token);
+      const profile = canvasToken.getProfile();
+      // Update UI to show connected state
       showCanvasCoursesScreen();
     } catch (error) {
       console.error('Canvas initialization failed:', error);
-      canvasAPI.clearConfig();
+      await canvasToken.disconnect();
       showCanvasSetupScreen();
     }
   } else {
     showCanvasSetupScreen();
   }
+
+  // Listen for Canvas connection state changes
+  canvasToken.onAuthStateChange((isConnected, profile) => {
+    if (isConnected) {
+      showCanvasCoursesScreen();
+    } else {
+      showCanvasSetupScreen();
+    }
+  });
 }
 
 /**
@@ -906,7 +915,7 @@ function showCanvasCoursesScreen() {
 async function loadCanvasCourses() {
   try {
     coursesList.innerHTML = '<div style="padding: 12px; text-align: center; color: var(--secondary);">Loading courses...</div>';
-    canvasCoursesList = await canvasAPI.getCourses();
+    canvasCoursesList = await canvasToken.getCourses();
     
     if (canvasCoursesList.length === 0) {
       coursesList.innerHTML = '<div style="padding: 12px; text-align: center; color: var(--secondary);">No courses found</div>';
@@ -964,7 +973,7 @@ function showCanvasContentScreen() {
 async function loadCanvasAssignments() {
   try {
     assignmentsList.innerHTML = '<div style="padding: 12px; text-align: center; color: var(--secondary);">Loading assignments...</div>';
-    const assignments = await canvasAPI.getAssignments(selectedCourseId);
+    const assignments = await canvasToken.getAssignments(selectedCourseId);
     
     if (assignments.length === 0) {
       assignmentsList.innerHTML = '<div style="padding: 12px; text-align: center; color: var(--secondary);">No assignments found</div>';
@@ -1056,16 +1065,19 @@ connectCanvasBtn.addEventListener('click', async () => {
   
   connectCanvasBtn.disabled = true;
   connectCanvasBtn.textContent = 'Connecting...';
-  showCanvasStatus('Testing connection...', 'info');
+  showCanvasStatus('Validating token...', 'info');
   
   try {
-    await canvasAPI.initialize(url, token);
-    await canvasAPI.saveConfig(url, token);
+    const result = await canvasToken.connect(url, token);
     
-    showCanvasStatus('✓ Connected to Canvas!', 'success');
-    setTimeout(() => {
-      showCanvasCoursesScreen();
-    }, 1000);
+    if (result.success) {
+      showCanvasStatus(`✓ Connected as ${result.profile.name}!`, 'success');
+      setTimeout(() => {
+        showCanvasCoursesScreen();
+      }, 1000);
+    } else {
+      throw new Error(result.error);
+    }
   } catch (error) {
     console.error('Canvas connection error:', error);
     showCanvasStatus('✗ Connection failed: ' + error.message, 'error');
@@ -1080,7 +1092,7 @@ connectCanvasBtn.addEventListener('click', async () => {
  */
 disconnectCanvasBtn.addEventListener('click', async () => {
   if (confirm('Disconnect Canvas?')) {
-    await canvasAPI.clearConfig();
+    await canvasToken.disconnect();
     showCanvasSetupScreen();
   }
 });
@@ -1122,7 +1134,7 @@ document.querySelectorAll('.canvas-tab-btn').forEach((btn) => {
 async function loadCanvasModules() {
   try {
     modulesList.innerHTML = '<div style="padding: 12px; text-align: center; color: var(--secondary);">Loading modules...</div>';
-    const modules = await canvasAPI.getModules(selectedCourseId);
+    const modules = await canvasToken.getModules(selectedCourseId);
     
     if (modules.length === 0) {
       modulesList.innerHTML = '<div style="padding: 12px; text-align: center; color: var(--secondary);">No modules found</div>';
@@ -1153,14 +1165,14 @@ async function loadCanvasModules() {
 async function loadCanvasSyllabus() {
   try {
     syllabusContent.innerHTML = '<div style="text-align: center; color: var(--secondary);">Loading syllabus...</div>';
-    const syllabus = await canvasAPI.getCourseSyllabus(selectedCourseId);
+    const syllabus = await canvasToken.getSyllabus(selectedCourseId);
     
-    if (!syllabus) {
+    if (!syllabus || syllabus === 'No syllabus available') {
       syllabusContent.innerHTML = '<div style="text-align: center; color: var(--secondary);">No syllabus available</div>';
       return;
     }
     
-    syllabusContent.innerHTML = canvasAPI.stripHtml(syllabus);
+    syllabusContent.innerHTML = syllabus;
   } catch (error) {
     console.error('Failed to load syllabus:', error);
     syllabusContent.innerHTML = `<div style="color: #f44336; font-size: 12px;">Error: ${error.message}</div>`;
