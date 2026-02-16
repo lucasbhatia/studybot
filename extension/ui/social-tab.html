@@ -1,0 +1,540 @@
+<div id="social-tab" class="tab-content" style="display: none;">
+  <div style="padding: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+    
+    <!-- Tab Navigation -->
+    <div style="display: flex; border-bottom: 1px solid #e0e0e0; margin-bottom: 20px;">
+      <button class="social-tab-btn" data-section="friends" style="
+        padding: 12px 16px;
+        border: none;
+        background: none;
+        color: #667eea;
+        font-weight: 600;
+        border-bottom: 2px solid #667eea;
+        cursor: pointer;
+        font-size: 14px;
+      ">👥 Friends</button>
+      
+      <button class="social-tab-btn" data-section="sets" style="
+        padding: 12px 16px;
+        border: none;
+        background: none;
+        color: #999;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 14px;
+      ">📚 Study Sets</button>
+      
+      <button class="social-tab-btn" data-section="groups" style="
+        padding: 12px 16px;
+        border: none;
+        background: none;
+        color: #999;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 14px;
+      ">🏫 Class Groups</button>
+      
+      <button class="social-tab-btn" data-section="feed" style="
+        padding: 12px 16px;
+        border: none;
+        background: none;
+        color: #999;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 14px;
+      ">📰 Feed</button>
+    </div>
+
+    <!-- Friends Section -->
+    <div class="social-section" data-section="friends">
+      <h3 style="margin-bottom: 16px; color: #333; font-size: 16px;">Friends</h3>
+      
+      <!-- Add Friend -->
+      <div style="margin-bottom: 20px;">
+        <input 
+          id="friend-search" 
+          type="text" 
+          placeholder="Search friends..."
+          style="
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            box-sizing: border-box;
+          "
+        />
+        <div id="friend-search-results" style="display: none; margin-top: 10px; max-height: 300px; overflow-y: auto;"></div>
+      </div>
+
+      <!-- Pending Requests -->
+      <div id="pending-requests" style="margin-bottom: 20px;">
+        <h4 style="font-size: 12px; color: #999; text-transform: uppercase; margin-bottom: 10px;">Pending Requests</h4>
+        <div id="pending-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+      </div>
+
+      <!-- Friends List -->
+      <div>
+        <h4 style="font-size: 12px; color: #999; text-transform: uppercase; margin-bottom: 10px;">My Friends</h4>
+        <div id="friends-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+      </div>
+    </div>
+
+    <!-- Study Sets Section -->
+    <div class="social-section" data-section="sets" style="display: none;">
+      <h3 style="margin-bottom: 16px; color: #333; font-size: 16px;">Study Sets</h3>
+      
+      <div style="margin-bottom: 20px;">
+        <button id="create-set-btn" style="
+          width: 100%;
+          padding: 12px;
+          background: #667eea;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          font-weight: 600;
+          cursor: pointer;
+          font-size: 14px;
+        ">+ Create Study Set</button>
+      </div>
+
+      <!-- My Sets -->
+      <div style="margin-bottom: 20px;">
+        <h4 style="font-size: 12px; color: #999; text-transform: uppercase; margin-bottom: 10px;">My Sets</h4>
+        <div id="my-sets" style="display: flex; flex-direction: column; gap: 8px;"></div>
+      </div>
+
+      <!-- Shared with Me -->
+      <div>
+        <h4 style="font-size: 12px; color: #999; text-transform: uppercase; margin-bottom: 10px;">Shared with Me</h4>
+        <div id="shared-sets" style="display: flex; flex-direction: column; gap: 8px;"></div>
+      </div>
+    </div>
+
+    <!-- Class Groups Section -->
+    <div class="social-section" data-section="groups" style="display: none;">
+      <h3 style="margin-bottom: 16px; color: #333; font-size: 16px;">Class Groups</h3>
+      
+      <div id="class-groups" style="display: flex; flex-direction: column; gap: 12px;"></div>
+    </div>
+
+    <!-- Activity Feed Section -->
+    <div class="social-section" data-section="feed" style="display: none;">
+      <h3 style="margin-bottom: 16px; color: #333; font-size: 16px;">Activity Feed</h3>
+      
+      <div id="activity-feed" style="display: flex; flex-direction: column; gap: 12px;"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  /**
+   * Social Tab UI Controller
+   */
+
+  class SocialTabController {
+    constructor() {
+      this.socialAPI = null;
+      this.setupEventListeners();
+    }
+
+    async initialize(api) {
+      this.socialAPI = api;
+      await this.loadFriends();
+      await this.loadStudySets();
+      await this.loadClassGroups();
+      await this.loadActivityFeed();
+    }
+
+    setupEventListeners() {
+      // Tab switching
+      document.querySelectorAll('.social-tab-btn').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          this.switchTab(e.target.dataset.section);
+        });
+      });
+
+      // Friend search
+      const searchInput = document.querySelector('#friend-search');
+      if (searchInput) {
+        searchInput.addEventListener('input', (e) => this.handleFriendSearch(e.target.value));
+      }
+
+      // Create set button
+      const createBtn = document.querySelector('#create-set-btn');
+      if (createBtn) {
+        createBtn.addEventListener('click', () => this.showCreateSetDialog());
+      }
+    }
+
+    switchTab(section) {
+      // Hide all sections
+      document.querySelectorAll('.social-section').forEach((s) => {
+        s.style.display = 'none';
+      });
+
+      // Show selected section
+      document.querySelector(`[data-section="${section}"]`).style.display = 'block';
+
+      // Update button styles
+      document.querySelectorAll('.social-tab-btn').forEach((btn) => {
+        if (btn.dataset.section === section) {
+          btn.style.color = '#667eea';
+          btn.style.borderBottomColor = '#667eea';
+        } else {
+          btn.style.color = '#999';
+          btn.style.borderBottomColor = 'transparent';
+        }
+      });
+    }
+
+    async handleFriendSearch(query) {
+      if (query.length < 2) {
+        document.querySelector('#friend-search-results').style.display = 'none';
+        return;
+      }
+
+      try {
+        const results = await this.socialAPI.searchUsers(query);
+        const resultsDiv = document.querySelector('#friend-search-results');
+        resultsDiv.innerHTML = '';
+
+        results.forEach((user) => {
+          const item = document.createElement('div');
+          item.style.cssText = `
+            padding: 8px 12px;
+            background: #f3f3f3;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+          `;
+
+          item.innerHTML = `
+            <span style="font-weight: 500; color: #333; font-size: 14px;">${user.display_name}</span>
+            <button class="add-friend-btn" data-user-id="${user.id}" style="
+              background: #667eea;
+              color: white;
+              border: none;
+              padding: 4px 12px;
+              border-radius: 4px;
+              cursor: pointer;
+              font-size: 12px;
+            ">Add</button>
+          `;
+
+          resultsDiv.appendChild(item);
+
+          item.querySelector('.add-friend-btn').addEventListener('click', () => {
+            this.sendFriendRequest(user.id);
+          });
+        });
+
+        resultsDiv.style.display = 'block';
+      } catch (error) {
+        console.error('Friend search failed:', error);
+      }
+    }
+
+    async sendFriendRequest(userId) {
+      try {
+        await this.socialAPI.sendFriendRequest(userId);
+        document.querySelector('#friend-search').value = '';
+        document.querySelector('#friend-search-results').style.display = 'none';
+        await this.loadFriends();
+      } catch (error) {
+        console.error('Send friend request failed:', error);
+      }
+    }
+
+    async loadFriends() {
+      try {
+        const friends = await this.socialAPI.getFriends();
+        const requests = await this.socialAPI.getFriendRequests();
+
+        const friendsList = document.querySelector('#friends-list');
+        friendsList.innerHTML = friends.length === 0 
+          ? '<p style="color: #999; font-size: 14px; text-align: center; padding: 20px;">No friends yet. Start by searching for classmates!</p>'
+          : '';
+
+        friends.forEach((friend) => {
+          const item = document.createElement('div');
+          item.style.cssText = `
+            padding: 12px;
+            background: #f9f9f9;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          `;
+
+          item.innerHTML = `
+            <span style="font-weight: 500; color: #333; font-size: 14px;">${friend.display_name}</span>
+            <button style="
+              background: #f3f3f3;
+              border: none;
+              padding: 4px 12px;
+              border-radius: 4px;
+              cursor: pointer;
+              font-size: 12px;
+              color: #666;
+            ">View Profile</button>
+          `;
+
+          friendsList.appendChild(item);
+        });
+
+        const pendingList = document.querySelector('#pending-list');
+        pendingList.innerHTML = requests.length === 0 
+          ? '<p style="color: #999; font-size: 12px;">None</p>'
+          : '';
+
+        requests.forEach((request) => {
+          const item = document.createElement('div');
+          item.style.cssText = `
+            padding: 12px;
+            background: #f9f9f9;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          `;
+
+          item.innerHTML = `
+            <span style="font-weight: 500; color: #333; font-size: 14px;">${request.user.display_name}</span>
+            <div style="display: flex; gap: 8px;">
+              <button class="accept-btn" style="
+                background: #22c55e;
+                color: white;
+                border: none;
+                padding: 4px 12px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 12px;
+              ">Accept</button>
+              <button class="decline-btn" style="
+                background: #ef4444;
+                color: white;
+                border: none;
+                padding: 4px 12px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 12px;
+              ">Decline</button>
+            </div>
+          `;
+
+          item.querySelector('.accept-btn').addEventListener('click', () => {
+            this.acceptFriendRequest(request.id);
+          });
+
+          item.querySelector('.decline-btn').addEventListener('click', () => {
+            this.declineFriendRequest(request.id);
+          });
+
+          pendingList.appendChild(item);
+        });
+      } catch (error) {
+        console.error('Load friends failed:', error);
+      }
+    }
+
+    async acceptFriendRequest(friendshipId) {
+      try {
+        await this.socialAPI.acceptFriendRequest(friendshipId);
+        await this.loadFriends();
+      } catch (error) {
+        console.error('Accept friend request failed:', error);
+      }
+    }
+
+    async declineFriendRequest(friendshipId) {
+      try {
+        await this.socialAPI.declineFriendRequest(friendshipId);
+        await this.loadFriends();
+      } catch (error) {
+        console.error('Decline friend request failed:', error);
+      }
+    }
+
+    async loadStudySets() {
+      try {
+        const mySets = await this.socialAPI.getMyStudySets();
+        const sharedSets = await this.socialAPI.getSharedWithMe();
+
+        const mySetsList = document.querySelector('#my-sets');
+        mySetsList.innerHTML = '';
+        mySets.forEach((set) => this.renderStudySet(set, mySetsList));
+
+        const sharedList = document.querySelector('#shared-sets');
+        sharedList.innerHTML = '';
+        sharedSets.forEach((set) => this.renderStudySet(set, sharedList));
+      } catch (error) {
+        console.error('Load study sets failed:', error);
+      }
+    }
+
+    renderStudySet(set, container) {
+      const item = document.createElement('div');
+      item.style.cssText = `
+        padding: 12px;
+        background: #f9f9f9;
+        border-radius: 6px;
+        border-left: 4px solid #667eea;
+      `;
+
+      item.innerHTML = `
+        <div style="font-weight: 600; color: #333; font-size: 14px; margin-bottom: 4px;">${set.title}</div>
+        <div style="color: #999; font-size: 12px; margin-bottom: 8px;">${set.course_name || 'General'}</div>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="font-size: 12px; color: #666;">
+            ❤️ ${set.like_count || 0} • 👁️ ${set.view_count || 0}
+          </div>
+          <button style="
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 4px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+          ">View</button>
+        </div>
+      `;
+
+      container.appendChild(item);
+    }
+
+    async loadClassGroups() {
+      try {
+        const groups = await this.socialAPI.getMyClassGroups();
+        const groupsDiv = document.querySelector('#class-groups');
+        groupsDiv.innerHTML = '';
+
+        groups.forEach((group) => {
+          const item = document.createElement('div');
+          item.style.cssText = `
+            padding: 16px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+          `;
+
+          item.innerHTML = `
+            <div style="font-weight: 600; color: #333; font-size: 14px; margin-bottom: 4px;">${group.course_name}</div>
+            <div style="color: #999; font-size: 12px; margin-bottom: 8px;">${group.course_code || ''}</div>
+            <div style="display: flex; gap: 8px;">
+              <button style="
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 4px 12px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 12px;
+              ">View Group</button>
+              <button style="
+                background: #f3f3f3;
+                color: #666;
+                border: none;
+                padding: 4px 12px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 12px;
+              ">Class Sets</button>
+            </div>
+          `;
+
+          groupsDiv.appendChild(item);
+        });
+      } catch (error) {
+        console.error('Load class groups failed:', error);
+      }
+    }
+
+    async loadActivityFeed() {
+      try {
+        const activities = await this.socialAPI.getFeed();
+        const feedDiv = document.querySelector('#activity-feed');
+        feedDiv.innerHTML = '';
+
+        activities.forEach((activity) => {
+          const item = document.createElement('div');
+          item.style.cssText = `
+            padding: 12px;
+            background: #f9f9f9;
+            border-radius: 6px;
+            border-left: 4px solid #667eea;
+          `;
+
+          const activityText = this.getActivityText(activity);
+          item.innerHTML = `
+            <div style="color: #333; font-size: 14px;">${activityText}</div>
+            <div style="color: #999; font-size: 12px; margin-top: 6px;">${this.formatDate(activity.created_at)}</div>
+          `;
+
+          feedDiv.appendChild(item);
+        });
+      } catch (error) {
+        console.error('Load activity feed failed:', error);
+      }
+    }
+
+    getActivityText(activity) {
+      const username = activity.user?.display_name || 'A friend';
+      switch (activity.activity_type) {
+        case 'created_set':
+          return `${username} created a new study set`;
+        case 'shared_set':
+          return `${username} shared a study set with you`;
+        case 'joined_group':
+          return `${username} joined a class group`;
+        case 'added_friend':
+          return `${username} added you as a friend`;
+        default:
+          return `${username} was active`;
+      }
+    }
+
+    formatDate(dateStr) {
+      const date = new Date(dateStr);
+      const now = new Date();
+      const diff = now - date;
+      const hours = diff / (1000 * 60 * 60);
+
+      if (hours < 1) {
+        return 'just now';
+      } else if (hours < 24) {
+        return `${Math.floor(hours)}h ago`;
+      } else {
+        return `${Math.floor(hours / 24)}d ago`;
+      }
+    }
+
+    showCreateSetDialog() {
+      alert('Create study set feature coming soon!');
+    }
+  }
+
+  // Initialize when loaded
+  const socialTabController = new SocialTabController();
+</script>
+
+<style>
+  .social-section {
+    animation: fadeIn 0.3s ease-in;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+</style>
