@@ -307,6 +307,10 @@ class CanvasAPIClient {
    * Strip HTML tags from text
    */
   stripHtml(html) {
+    if (!html) {
+      return '';
+    }
+    
     // Remove script and style tags
     let text = html.replace(/<script[^>]*>.*?<\/script>/gi, '');
     text = text.replace(/<style[^>]*>.*?<\/style>/gi, '');

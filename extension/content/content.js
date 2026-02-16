@@ -35,8 +35,18 @@ class ContentExtractor {
       this.extractPageContent();
     });
 
-    document.body.appendChild(button);
-    this.floatingButton = button;
+    if (document.body) {
+      document.body.appendChild(button);
+      this.floatingButton = button;
+    } else {
+      // Wait for DOM to be ready
+      document.addEventListener('DOMContentLoaded', () => {
+        if (document.body) {
+          document.body.appendChild(button);
+          this.floatingButton = button;
+        }
+      });
+    }
   }
 
   /**
@@ -326,16 +336,21 @@ class ContentExtractor {
     notification.className = `studybot-notification studybot-notification-${type}`;
     notification.textContent = message;
 
-    document.body.appendChild(notification);
+    // Only show notification if document.body is ready
+    if (document.body) {
+      document.body.appendChild(notification);
 
-    setTimeout(() => {
-      notification.classList.add('show');
-    }, 10);
+      setTimeout(() => {
+        notification.classList.add('show');
+      }, 10);
 
-    setTimeout(() => {
-      notification.classList.remove('show');
-      setTimeout(() => notification.remove(), 300);
-    }, 3000);
+      setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => notification.remove(), 300);
+      }, 3000);
+    } else {
+      console.log('[StudyBot]', message); // Fallback to console log
+    }
   }
 }
 

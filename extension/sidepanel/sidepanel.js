@@ -93,11 +93,11 @@ document.addEventListener('DOMContentLoaded', async () => {
  */
 async function checkAndLoadPendingContent() {
   try {
-    const result = await chrome.storage.local.get('pendingExtractedContent');
+    const result = await chrome.storage.local.get(['pendingExtractedContent']);
     if (result.pendingExtractedContent) {
       const data = result.pendingExtractedContent;
       // Clear it so we don't process it again
-      await chrome.storage.local.remove('pendingExtractedContent');
+      chrome.storage.local.remove('pendingExtractedContent');
       // Process the extracted content
       await handleExtractedContent(data);
     }
@@ -500,27 +500,32 @@ function startQuiz() {
       };
     } else {
       // For multiple choice, card answer is the correct choice
-      const options = [card.answer]; // Start with correct answer
+      const correctAnswer = card.answer;
       
-      // Shuffle position of correct answer
-      const correctIndex = Math.floor(Math.random() * 4);
-      while (options.length < 4) {
-        options.push(`Distractor ${options.length}`);
-      }
+      // Generate distractor options
+      const distractors = [
+        `Distractor ${Math.random().toString(36).substring(7)}`,
+        `Distractor ${Math.random().toString(36).substring(7)}`,
+        `Distractor ${Math.random().toString(36).substring(7)}`,
+      ];
       
-      // Move correct answer to random position
-      const temp = options[0];
-      options[0] = options[correctIndex];
-      options[correctIndex] = temp;
+      // Create all options with correct answer
+      const allOptions = [correctAnswer, ...distractors];
+      
+      // Shuffle options
+      const shuffled = [...allOptions].sort(() => Math.random() - 0.5);
+      
+      // Find correct answer index after shuffle
+      const correctIndex = shuffled.indexOf(correctAnswer);
       
       return {
         id: card.id,
         question: card.question,
         type: 'multiple-choice',
         difficulty: difficulty,
-        correctAnswerIndex: correctIndex, // Index of card.answer in options array
-        correctAnswerText: card.answer,
-        options: options,
+        correctAnswerIndex: correctIndex, // Index of correct answer in shuffled array
+        correctAnswerText: correctAnswer,
+        options: shuffled,
       };
     }
   });
