@@ -29,7 +29,13 @@ class NotificationManager {
         pointer-events: none;
         max-width: 400px;
       `;
-      document.body.appendChild(container);
+      if (document.body) {
+        document.body.appendChild(container);
+      } else {
+        document.addEventListener('DOMContentLoaded', () => {
+          document.body.appendChild(container);
+        });
+      }
     }
     this.container = container;
   }

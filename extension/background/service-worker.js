@@ -2,6 +2,18 @@
 
 // Initialize on install
 chrome.runtime.onInstalled.addListener(() => {
+  // Create context menus
+  chrome.contextMenus.create({
+    id: 'studybot-extract',
+    title: 'Generate study materials',
+    contexts: ['page']
+  });
+  chrome.contextMenus.create({
+    id: 'studybot-selection',
+    title: 'StudyBot: Create from selection',
+    contexts: ['selection']
+  });
+
   // Initialize storage
   chrome.storage.sync.get(['studybot_settings'], (result) => {
     if (!result.studybot_settings) {
