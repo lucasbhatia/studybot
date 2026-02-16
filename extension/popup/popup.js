@@ -362,22 +362,34 @@ fileInput.addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (!file) return;
 
-  const reader = new FileReader();
-  reader.onload = async (event) => {
-    const jsonData = event.target.result;
-    const imported = await storage.importStudySet(jsonData);
+  try {
+    const reader = new FileReader();
+    reader.onerror = () => {
+      throw new Error('Failed to read file');
+    };
+    reader.onload = async (event) => {
+      try {
+        const jsonData = event.target.result;
+        const imported = await storage.importStudySet(jsonData);
+        
+        if (imported) {
+          await loadStudySets();
+          await updateStats();
+          showNotification('Study set imported successfully', 'success');
+        } else {
+          showNotification('Failed to import study set', 'error');
+        }
+      } catch (error) {
+        ErrorHandler.logError('Import', error, true);
+      }
+    };
     
-    if (imported) {
-      await loadStudySets();
-      await updateStats();
-      showNotification('Study set imported successfully', 'success');
-    } else {
-      showNotification('Failed to import study set', 'error');
-    }
-  };
-  
-  reader.readAsText(file);
-  fileInput.value = ''; // Reset file input
+    reader.readAsText(file);
+  } catch (error) {
+    ErrorHandler.logError('File selection', error, true);
+  } finally {
+    fileInput.value = ''; // Reset file input
+  }
 });
 
 /**
