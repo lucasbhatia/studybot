@@ -74,6 +74,16 @@ let editingCardId = null;
 document.addEventListener('DOMContentLoaded', async () => {
   await storage.initializeSettings();
   await applyTheme();
+  
+  // Initialize auth
+  await auth.initializeSession();
+  AuthUI.renderSidepanelAuthHeader();
+  
+  // Listen for auth state changes
+  auth.onAuthStateChange(() => {
+    AuthUI.renderSidepanelAuthHeader();
+  });
+  
   setupEventListeners();
   
   // Show onboarding if first time

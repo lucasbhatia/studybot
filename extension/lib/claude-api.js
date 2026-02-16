@@ -176,11 +176,29 @@ ${content}`;
 
   /**
    * Call Claude API with fallback handling
+   * Priority:
+   * 1. If authenticated via Supabase → use proxy with auth token
+   * 2. If has BYOK key → use Anthropic directly
+   * 3. If proxy available → use proxy without auth
+   * 4. Fallback to error
    */
   async callAPI(prompt, type = 'general') {
     const config = await this.getConfig();
 
-    // Try user's API key first (BYOK)
+    // Check if user is authenticated via Supabase
+    const isAuthenticated = typeof auth !== 'undefined' && auth.isAuthenticated();
+
+    // Priority 1: Authenticated user → use proxy with auth token
+    if (isAuthenticated) {
+      try {
+        return await this.callProxyAPI(prompt, type);
+      } catch (error) {
+        console.error('Proxy API call failed (authenticated):', error);
+        // Fall through to next method
+      }
+    }
+
+    // Priority 2: User's own API key (BYOK)
     if (config.apiKey && !config.useProxy) {
       try {
         return await this.callAnthropicAPI(prompt, config.apiKey);
@@ -190,18 +208,18 @@ ${content}`;
       }
     }
 
-    // Try proxy if available
+    // Priority 3: Try proxy without auth
     if (config.useProxy) {
       try {
         return await this.callProxyAPI(prompt, type);
       } catch (error) {
-        console.error('Proxy API call failed:', error);
-        // Fall through to template fallback
+        console.error('Proxy API call failed (unauthenticated):', error);
+        // Fall through to error
       }
     }
 
     // Fallback: return error
-    throw new Error('No API available. Please configure API key or enable proxy.');
+    throw new Error('No API available. Please sign in, configure API key, or enable proxy.');
   }
 
   /**
@@ -252,11 +270,21 @@ ${content}`;
    * Call StudyBot proxy API
    */
   async callProxyAPI(prompt, type) {
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+
+    // Add auth token if user is authenticated
+    if (typeof auth !== 'undefined') {
+      const token = await auth.getAccessToken();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+    }
+
     const response = await fetch(this.proxyUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify({
         prompt,
         type,

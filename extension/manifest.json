@@ -14,7 +14,8 @@
   "host_permissions": [
     "https://*.instructure.com/*",
     "https://api.studybot.dev/*",
-    "https://api.anthropic.com/*"
+    "https://api.anthropic.com/*",
+    "https://*.supabase.co/*"
   ],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://api.anthropic.com https://api.studybot.dev https://*.instructure.com"
@@ -66,5 +67,11 @@
     "48": "icons/icon48.png",
     "128": "icons/icon128.png",
     "256": "icons/icon256.png"
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["auth/callback.html"],
+      "matches": ["https://*.supabase.co/*"]
+    }
+  ]
 }

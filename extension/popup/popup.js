@@ -32,6 +32,18 @@ let claudeAPI = null;
 document.addEventListener('DOMContentLoaded', async () => {
   await storage.initializeSettings();
   claudeAPI = new ClaudeAPIService();
+  
+  // Initialize auth UI
+  await auth.initializeSession();
+  AuthUI.updateHeaderAuthStatus();
+  AuthUI.renderPopupAuthSection();
+  
+  // Listen for auth state changes
+  auth.onAuthStateChange(() => {
+    AuthUI.updateHeaderAuthStatus();
+    AuthUI.renderPopupAuthSection();
+  });
+  
   await loadStudySets();
   await loadSettings();
   await updateStats();
