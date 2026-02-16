@@ -15,8 +15,10 @@ class ContentExtractor {
    * Inject floating extraction button on the page
    */
   injectFloatingButton() {
-    // Don't inject on extension pages
+    // Don't inject on extension pages or auth iframes
     if (window.location.protocol === 'chrome-extension:') return;
+    if (window.location.href.includes('duosecurity.com')) return;
+    if (window !== window.top) return; // Skip iframes
 
     const button = document.createElement('div');
     button.id = 'studybot-extract-button';
@@ -123,7 +125,12 @@ class ContentExtractor {
 
     // Fall back to body
     if (!mainContent) {
-      mainContent = clone.body;
+      mainContent = clone.body || clone.querySelector('body');
+    }
+
+    // Guard against null element
+    if (!mainContent) {
+      return document.body ? document.body.innerText : '';
     }
 
     // Extract text
@@ -136,11 +143,12 @@ class ContentExtractor {
    * Extract clean text from element with structure preservation
    */
   extractTextFromElement(element) {
+    if (!element) return '';
     let text = '';
     const visitedNodes = new Set();
 
     const walk = (node) => {
-      if (visitedNodes.has(node)) return;
+      if (!node || visitedNodes.has(node)) return;
       visitedNodes.add(node);
 
       // Skip certain elements
