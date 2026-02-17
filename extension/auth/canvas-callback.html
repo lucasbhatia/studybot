@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Canvas OAuth Callback - StudyBot</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .container {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      padding: 40px;
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .logo {
+      font-size: 36px;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      font-size: 24px;
+      color: #333;
+      margin-bottom: 12px;
+    }
+
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #667eea;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    .status {
+      color: #666;
+      margin-top: 16px;
+      font-size: 14px;
+    }
+
+    .success {
+      color: #22c55e;
+      font-weight: 600;
+    }
+
+    .error {
+      color: #ef4444;
+      font-weight: 600;
+    }
+
+    .error-details {
+      background: #fee2e2;
+      border-left: 4px solid #ef4444;
+      color: #991b1b;
+      padding: 12px;
+      border-radius: 4px;
+      margin-top: 16px;
+      text-align: left;
+      font-size: 13px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .close-hint {
+      margin-top: 24px;
+      font-size: 12px;
+      color: #999;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">📚</div>
+    <h1>StudyBot Canvas</h1>
+    <p class="status">Processing your Canvas login...</p>
+    <div class="spinner"></div>
+    <p class="close-hint">This window will close automatically once authentication is complete.</p>
+  </div>
+
+  <script>
+    /**
+     * Canvas OAuth Callback Handler
+     * Exchanges authorization code for access token
+     */
+
+    async function handleCanvasCallback() {
+      try {
+        const container = document.querySelector('.container');
+        const statusEl = document.querySelector('.status');
+        const spinnerEl = document.querySelector('.spinner');
+
+        // Parse URL parameters
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get('code');
+        const state = params.get('state');
+        const error = params.get('error');
+        const errorDescription = params.get('error_description');
+
+        // Handle auth errors
+        if (error) {
+          throw new Error(`Canvas OAuth Error: ${error} - ${errorDescription || 'Unknown error'}`);
+        }
+
+        if (!code) {
+          throw new Error('No authorization code received from Canvas');
+        }
+
+        // Extract Canvas URL from referrer or window.opener
+        let canvasUrl = null;
+
+        if (window.opener && window.opener.location) {
+          try {
+            canvasUrl = new URL(window.opener.location.href).origin;
+          } catch (e) {
+            console.log('Could not extract Canvas URL from opener');
+          }
+        }
+
+        if (!canvasUrl && document.referrer) {
+          try {
+            canvasUrl = new URL(document.referrer).origin;
+          } catch (e) {
+            console.log('Could not extract Canvas URL from referrer');
+          }
+        }
+
+        if (!canvasUrl) {
+          // Try to extract from browser history or use fallback
+          throw new Error('Could not determine Canvas instance URL');
+        }
+
+        statusEl.textContent = 'Exchanging authorization code...';
+
+        // Get the client ID from extension storage
+        const storageData = await new Promise((resolve) => {
+          chrome.storage.local.get('canvas_oauth_config', resolve);
+        });
+
+        const clientId = storageData.canvas_oauth_config?.clientId;
+        const clientSecret = storageData.canvas_oauth_config?.clientSecret;
+
+        if (!clientId) {
+          throw new Error('Client ID not configured. Please set up Canvas OAuth in extension settings.');
+        }
+
+        // Exchange code for token
+        const tokenResponse = await fetch(`${canvasUrl}/login/oauth2/token`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            client_id: clientId,
+            client_secret: clientSecret,
+            code: code,
+            redirect_uri: window.location.href,
+            grant_type: 'authorization_code',
+          }),
+        });
+
+        if (!tokenResponse.ok) {
+          const errorData = await tokenResponse.json();
+          throw new Error(`Token exchange failed: ${errorData.error || tokenResponse.status}`);
+        }
+
+        const tokenData = await tokenResponse.json();
+
+        if (!tokenData.access_token) {
+          throw new Error('No access token received');
+        }
+
+        statusEl.textContent = 'Fetching user profile...';
+
+        // Fetch user profile
+        const profileResponse = await fetch(`${canvasUrl}/api/v1/users/self/profile`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${tokenData.access_token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!profileResponse.ok) {
+          throw new Error(`Failed to fetch user profile: ${profileResponse.status}`);
+        }
+
+        const profile = await profileResponse.json();
+
+        // Prepare session data
+        const expiresAt = tokenData.expires_in 
+          ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString()
+          : null;
+
+        const session = {
+          access_token: tokenData.access_token,
+          expires_in: tokenData.expires_in,
+          expires_at: expiresAt,
+          created_at: new Date().toISOString(),
+        };
+
+        const user = {
+          id: profile.id,
+          name: profile.name,
+          email: profile.primary_email,
+          avatar_url: profile.avatar_url,
+          canvas_user_id: profile.id,
+          canvas_url: canvasUrl,
+          primary_email: profile.primary_email,
+          login_id: profile.login_id,
+        };
+
+        // Save to storage
+        await new Promise((resolve) => {
+          chrome.storage.local.set({
+            canvas_session: session,
+            canvas_user: user,
+            canvas_url: canvasUrl,
+          }, resolve);
+        });
+
+        // Send success message to extension
+        statusEl.textContent = 'Success!';
+        statusEl.className = 'status success';
+        spinnerEl.style.display = 'none';
+
+        chrome.runtime.sendMessage({
+          type: 'CANVAS_AUTH_SUCCESS',
+          session: session,
+          user: user,
+        }, () => {
+          // Close tab after a brief delay
+          setTimeout(() => {
+            window.close();
+          }, 1500);
+        });
+
+      } catch (error) {
+        console.error('Canvas callback error:', error);
+
+        const container = document.querySelector('.container');
+        const statusEl = document.querySelector('.status');
+        const spinnerEl = document.querySelector('.spinner');
+
+        statusEl.textContent = 'Authentication Failed';
+        statusEl.className = 'status error';
+        spinnerEl.style.display = 'none';
+
+        // Show error details
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'error-details';
+        errorDiv.textContent = error.message;
+        container.appendChild(errorDiv);
+
+        // Send error message to extension
+        chrome.runtime.sendMessage({
+          type: 'CANVAS_AUTH_ERROR',
+          error: error.message,
+        }, () => {
+          // Keep window open for debugging
+        });
+      }
+    }
+
+    // Run on page load
+    document.addEventListener('DOMContentLoaded', handleCanvasCallback);
+    // Also run immediately in case DOM is already ready
+    if (document.readyState !== 'loading') {
+      handleCanvasCallback();
+    }
+  </script>
+</body>
+</html>
