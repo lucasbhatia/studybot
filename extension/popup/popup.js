@@ -161,10 +161,10 @@ async function exportStudySet(setId) {
 }
 
 /**
- * Search study sets
+ * Search study sets - debounced for performance
  */
-searchInput.addEventListener('input', (e) => {
-  currentSearchQuery = e.target.value.toLowerCase();
+const debouncedSearch = debouncerManager.debounce((query) => {
+  currentSearchQuery = query.toLowerCase();
   
   const filtered = allStudySets.filter(set =>
     set.title.toLowerCase().includes(currentSearchQuery) ||
@@ -172,6 +172,10 @@ searchInput.addEventListener('input', (e) => {
   );
   
   renderStudySets(filtered);
+}, 300);
+
+searchInput.addEventListener('input', (e) => {
+  debouncedSearch(e.target.value);
 });
 
 /**
@@ -326,18 +330,19 @@ async function updateUsageMeter() {
       usageText.textContent = `${usage.count}/${usage.limit}`;
       
       // Change color based on usage
-      if (usage.percentage >= 80) {
-        usageBar.style.background = '#ff9800'; // Orange when near limit
-      } else if (usage.percentage >= 100) {
-        usageBar.style.background = '#f44336'; // Red at limit
+      if (usage.percentage >= 100) {
+        usageBar.style.background = 'var(--danger)'; // Red at limit
+      } else if (usage.percentage >= 80) {
+        usageBar.style.background = 'var(--warning)'; // Orange when near limit
       } else {
-        usageBar.style.background = 'var(--accent)'; // Normal
+        usageBar.style.background = 'var(--primary)'; // Blue normally
       }
     }
     
     usageSection.style.display = 'block';
   } catch (error) {
-    console.error('Failed to update usage meter:', error);
+    // Silent fail - just don't show usage meter
+    usageSection.style.display = 'none';
   }
 }
 
