@@ -5,8 +5,10 @@
 
 const STUDYBOT_CONFIG = {
   // Supabase Configuration
-  SUPABASE_URL: 'https://your-project.supabase.co',
-  SUPABASE_ANON_KEY: 'your-anon-key',
+  // Note: In production, these should be set via environment variables or user configuration
+  // For now, using a placeholder that will be configured during deployment
+  SUPABASE_URL: '',  // Will be configured during deployment
+  SUPABASE_ANON_KEY: '',  // Will be configured during deployment
 
   // API Endpoints
   PROXY_URL: 'https://api.studybot.dev/v1',

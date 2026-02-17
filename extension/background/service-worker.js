@@ -29,8 +29,11 @@ async function handleOAuthCallback(hash) {
     // Calculate expiry time
     const expiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
 
-    // Get user info from the token (using Supabase URL)
-    const supabaseUrl = 'https://your-project.supabase.co'; // Will be set in config
+    // Get user info from the token (using Supabase URL from config)
+    const supabaseUrl = STUDYBOT_CONFIG?.SUPABASE_URL || '';
+    if (!supabaseUrl) {
+      throw new Error('Supabase URL not configured');
+    }
     const user = await fetch(`${supabaseUrl}/auth/v1/user`, {
       method: 'GET',
       headers: {
